@@ -37,3 +37,10 @@ export interface BookmarksApi {
   /** Remove o nó; pastas saem inteiras, com o conteúdo. */
   remove(id: string): Promise<void>
 }
+
+export interface Snapshot {
+  id: string
+  createdAt: number
+  reason: string
+  tree: BmNode[]
+}
