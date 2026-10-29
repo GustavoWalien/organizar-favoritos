@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import BackupsTab from '../../ui/BackupsTab'
+import CleanupTab from '../../ui/CleanupTab'
 import OverviewTab from '../../ui/OverviewTab'
 
 const TABS = ['Visão geral', 'Limpeza', 'Backups'] as const
@@ -21,7 +22,7 @@ export default function App() {
       <section role="tabpanel">
         {tab === 'Visão geral' && <OverviewTab />}
         {tab === 'Backups' && <BackupsTab />}
-        {tab === 'Limpeza' && <p>Limpeza: em construção.</p>}
+        {tab === 'Limpeza' && <CleanupTab />}
       </section>
     </main>
   )

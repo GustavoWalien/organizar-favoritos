@@ -9,3 +9,11 @@ button { font: inherit; cursor: pointer; }
 .list .list { gap: 6px; margin-left: 16px; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 .detail { margin: 8px 0 0 16px; }
+.toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+.review { list-style: none; padding: 0; display: grid; gap: 10px; }
+.review li { padding-bottom: 8px; border-bottom: 1px solid #8883; }
+.tag { display: inline-block; font-size: 12px; padding: 1px 6px; border-radius: 8px; background: #8883; margin-right: 4px; }
+.tag-quebrado { background: #e5393544; }
+.tag-incerto { background: #f9a82544; }
+.status { background: #8882; padding: 8px 12px; border-radius: 6px; }
+.trash { margin-top: 24px; border-top: 1px solid #8884; }
