@@ -44,3 +44,26 @@ export interface Snapshot {
   reason: string
   tree: BmNode[]
 }
+
+export type Operation =
+  /** `parentId` pode ser o `tempId` de uma pasta criada antes no mesmo plano. */
+  | { op: 'create-folder'; tempId: string; parentId: string; title: string }
+  | { op: 'create-link'; parentId: string; title: string; url: string }
+  | { op: 'move'; id: string; toParentId: string; toIndex?: number }
+  /** Só usado para esvaziar a Lixeira; não tem inverso. */
+  | { op: 'remove'; id: string }
+
+export interface Plan {
+  id: string
+  label: string
+  operations: Operation[]
+}
+
+export interface JournalEntry {
+  planId: string
+  label: string
+  appliedAt: number
+  snapshotId: string
+  /** Em ordem de aplicação; o desfazer percorre de trás para frente. */
+  inverse: Operation[]
+}
