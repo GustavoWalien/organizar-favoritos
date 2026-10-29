@@ -87,7 +87,7 @@ describe('undoLast', () => {
     ]), api, 1)
     expect(await api.getTree()).not.toEqual(before)
     const r = await undoLast(api)
-    expect(r).toEqual({ undone: 3, skipped: 0 })
+    expect(r).toEqual({ undone: 3, skipped: 0, relocated: 0 })
     expect(await api.getTree()).toEqual(before)
   })
 
@@ -98,7 +98,7 @@ describe('undoLast', () => {
       { op: 'move', id: '999', toParentId: '2' },
       { op: 'move', id: '10', toParentId: '2' },
     ]), api, 1)
-    expect(await undoLast(api)).toEqual({ undone: 1, skipped: 0 })
+    expect(await undoLast(api)).toEqual({ undone: 1, skipped: 0, relocated: 0 })
     expect(await api.getTree()).toEqual(before)
   })
 
@@ -108,7 +108,7 @@ describe('undoLast', () => {
     const outros = (await api.get('2')) as BmFolder
     const nova = outros.children.find((c) => c.title === 'Nova')!
     await api.move('11', nova.id)
-    expect(await undoLast(api)).toEqual({ undone: 0, skipped: 1 })
+    expect(await undoLast(api)).toEqual({ undone: 0, skipped: 1, relocated: 0 })
     expect(await api.get(nova.id)).toBeDefined()
   })
 
@@ -122,6 +122,27 @@ describe('undoLast', () => {
     await undoLast(api)
     expect((await api.get('10'))?.parentId).toBe('5')
     expect(await undoLast(api)).toBeNull()
+  })
+
+  it('se o índice original não existe mais, tenta de novo sem índice', async () => {
+    const api = makeFakeApi(sampleTree)
+    await runPlan(plan([{ op: 'move', id: '11', toParentId: '2' }]), api, 1)
+    await api.remove('10') // a pasta Dev agora está vazia: o índice 1 não existe mais
+    expect(await undoLast(api)).toEqual({ undone: 1, skipped: 0, relocated: 0 })
+    expect((await api.get('11'))?.parentId).toBe('5')
+  })
+
+  it('se a pasta de origem sumiu, manda para Outros favoritos e ainda remove a Lixeira vazia', async () => {
+    const api = makeFakeApi(sampleTree)
+    await runPlan(plan([
+      { op: 'create-folder', tempId: 't', parentId: '2', title: 'Lixeira' },
+      { op: 'move', id: '11', toParentId: 't' },
+    ]), api, 1)
+    await api.remove('5') // a pasta Dev some
+    expect(await undoLast(api)).toEqual({ undone: 2, skipped: 0, relocated: 1 })
+    expect((await api.get('11'))?.parentId).toBe('2')
+    const outros = (await api.get('2')) as BmFolder
+    expect(outros.children.some((c) => c.kind === 'folder' && c.title === 'Lixeira')).toBe(false)
   })
 
   it('devolve null sem diário', async () => {

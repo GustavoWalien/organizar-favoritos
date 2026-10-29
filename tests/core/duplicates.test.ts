@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findDuplicates } from '../../src/core/duplicates'
+import { findDuplicates, groupsFullySelected } from '../../src/core/duplicates'
 import type { FlatLink } from '../../src/core/types'
 
 const link = (id: string, url: string, dateAdded: number, path: string[] = ['Barra']): FlatLink => ({
@@ -31,5 +31,11 @@ describe('findDuplicates', () => {
   it('favoritelets e URLs não web nunca entram em grupos de duplicados', () => {
     const bm = 'javascript:(function(){alert(1)})()'
     expect(findDuplicates([link('a', bm, 1), link('b', bm, 2), link('c', 'chrome://settings', 3), link('d', 'chrome://settings', 4)])).toEqual([])
+  })
+
+  it('groupsFullySelected acusa o grupo em que todas as cópias, inclusive a que fica, foram marcadas', () => {
+    const groups = findDuplicates([link('a', 'https://a.com/', 1), link('b', 'https://a.com/', 2), link('c', 'https://z.com/', 1), link('d', 'https://z.com/', 2)])
+    expect(groupsFullySelected(groups, new Set(['a', 'b', 'd'])).map((g) => g.keep.id)).toEqual(['a'])
+    expect(groupsFullySelected(groups, new Set(['b', 'd']))).toEqual([])
   })
 })

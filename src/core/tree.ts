@@ -1,9 +1,11 @@
 import type { BmNode, FlatLink } from './types'
 
-export function flattenLinks(root: BmNode[]): FlatLink[] {
+/** Todos os links com o caminho das pastas. `skipFolderId` deixa de fora uma pasta inteira (a Lixeira). */
+export function flattenLinks(root: BmNode[], skipFolderId?: string): FlatLink[] {
   const out: FlatLink[] = []
   const walk = (nodes: BmNode[], path: string[]) => {
     for (const n of nodes) {
+      if (n.id === skipFolderId) continue
       if (n.kind === 'link') out.push({ ...n, path })
       else walk(n.children, n.parentId === undefined ? path : [...path, n.title])
     }

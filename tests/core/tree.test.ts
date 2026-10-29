@@ -58,4 +58,8 @@ describe('tree', () => {
   it('listFolders lista as pastas comuns com o caminho e ignora a raiz e suas filhas diretas', () => {
     expect(listFolders(sampleTree)).toEqual([{ id: '5', title: 'Dev', path: ['Barra de favoritos'] }])
   })
+
+  it('flattenLinks pode pular uma pasta inteira (a Lixeira) e tudo que há nela', () => {
+    expect(flattenLinks(sampleTree, '5').map((l) => l.id)).toEqual(['20'])
+  })
 })

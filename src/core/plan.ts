@@ -1,7 +1,7 @@
 import { deleteEntry, lastEntry, saveEntry } from '../storage/journal'
 import { saveSnapshot } from '../storage/snapshots'
 import { createSnapshot } from './snapshot'
-import { isProtected } from './tree'
+import { isProtected, otherBookmarksId } from './tree'
 import type { BmFolder, BookmarksApi, JournalEntry, Operation, Plan, Snapshot } from './types'
 
 export class BackupFailedError extends Error {
@@ -87,21 +87,35 @@ export async function runPlan(
   return { applied, failed, entry }
 }
 
-/** Reverte o último plano aplicado. Devolve null se não há nada para desfazer. */
+/**
+ * Reverte o último plano aplicado. Devolve null se não há nada para desfazer.
+ * Se o lugar de origem mudou, tenta sem o índice e, se a pasta sumiu, manda o item para "Outros favoritos"
+ * (`relocated`), para que nada fique preso na Lixeira.
+ */
 export async function undoLast(
   api: BookmarksApi,
   store: UndoStore = { lastEntry, deleteEntry },
-): Promise<{ undone: number; skipped: number } | null> {
+): Promise<{ undone: number; skipped: number; relocated: number } | null> {
   const entry = await store.lastEntry()
   if (!entry) return null
 
   let undone = 0
   let skipped = 0
+  let relocated = 0
   for (const op of [...entry.inverse].reverse()) {
     try {
       if (op.op === 'move') {
         if (!(await api.get(op.id))) throw new Error('sumiu')
-        await api.move(op.id, op.toParentId, op.toIndex)
+        try {
+          await api.move(op.id, op.toParentId, op.toIndex)
+        } catch {
+          try {
+            await api.move(op.id, op.toParentId)
+          } catch {
+            await api.move(op.id, otherBookmarksId(await api.getTree()))
+            relocated++
+          }
+        }
       } else if (op.op === 'remove') {
         const node = await api.get(op.id)
         if (!node) throw new Error('sumiu')
@@ -114,5 +128,5 @@ export async function undoLast(
     }
   }
   await store.deleteEntry(entry.planId)
-  return { undone, skipped }
+  return { undone, skipped, relocated }
 }

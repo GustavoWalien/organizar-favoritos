@@ -30,6 +30,7 @@ export interface FlatLink extends BmLink {
 export interface BookmarksApi {
   /** Devolve `[raiz]`. */
   getTree(): Promise<BmNode[]>
+  /** O nó com `index`; pastas vêm com todos os `children`. */
   get(id: string): Promise<BmNode | undefined>
   createFolder(parentId: string, title: string): Promise<string>
   createLink(parentId: string, title: string, url: string): Promise<string>

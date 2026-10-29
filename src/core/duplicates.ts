@@ -24,3 +24,8 @@ export function findDuplicates(links: FlatLink[]): DuplicateGroup[] {
   }
   return out
 }
+
+/** Grupos em que todas as cópias, inclusive a que ficaria, estão marcadas: não sobraria nenhuma. */
+export function groupsFullySelected(groups: DuplicateGroup[], selected: Set<string>): DuplicateGroup[] {
+  return groups.filter((g) => [g.keep, ...g.extras].every((l) => selected.has(l.id)))
+}

@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { chromeBookmarksApi } from '../chrome/bookmarksApi'
 import { requestLinkCheckPermission } from '../chrome/permissions'
-import { buildCleanupPlan, buildPurgePlan, findEmptyFolders, findTrash } from '../core/cleanup'
+import { findEmptyFolders, findTrash } from '../core/cleanup'
 import { findDuplicates } from '../core/duplicates'
 import { findInactive } from '../core/inactive'
 import { checkLinks } from '../core/linkStatus'
 import { BackupFailedError, runPlan, undoLast } from '../core/plan'
 import { flattenLinks } from '../core/tree'
-import type { BmNode } from '../core/types'
+import type { BmNode, JournalEntry } from '../core/types'
 import { lastEntry } from '../storage/journal'
+import { prepareCleanup, preparePurge } from './cleanupActions'
 import { fromDuplicates, fromEmptyFolders, fromInactive, fromLinkStatuses } from './candidates'
 import LinkReviewList, { REASON_LABEL } from './LinkReviewList'
 import { clear, filterByReason, mergeCandidates, selectAll, toggleOne, type Candidate, type Reason } from './selection'
@@ -27,12 +28,16 @@ export default function CleanupTab() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [canUndo, setCanUndo] = useState(false)
+  const [lastInfo, setLastInfo] = useState<Pick<JournalEntry, 'label' | 'appliedAt'> | null>(null)
   const abort = useRef<AbortController | null>(null)
 
+  /** Lê a árvore e o último plano aplicado de novo. Toda ação que altera favoritos parte daqui, não do estado antigo. */
   const reload = useCallback(async () => {
-    setTree(await chromeBookmarksApi.getTree())
-    setCanUndo(Boolean(await lastEntry()))
+    const fresh = await chromeBookmarksApi.getTree()
+    setTree(fresh)
+    const last = await lastEntry()
+    setLastInfo(last ? { label: last.label, appliedAt: last.appliedAt } : null)
+    return fresh
   }, [])
   useEffect(() => { void reload() }, [reload])
 
@@ -53,18 +58,24 @@ export default function CleanupTab() {
     }
   }
 
-  const analyzeInactive = () => tree && setPart('inactive', fromInactive(findInactive(flattenLinks(tree), Date.now(), days)))
-  const analyzeDuplicates = () => tree && setPart('dups', fromDuplicates(findDuplicates(flattenLinks(tree))))
-  const analyzeEmpties = () => tree && setPart('empties', fromEmptyFolders(findEmptyFolders(tree)))
+  const linksOf = (t: BmNode[]) => flattenLinks(t, findTrash(t)?.id)
+  const analyzeInactive = () => guard(async () => {
+    setPart('inactive', fromInactive(findInactive(linksOf(await reload()), Date.now(), days)))
+  })
+  const analyzeDuplicates = () => guard(async () => {
+    setPart('dups', fromDuplicates(findDuplicates(linksOf(await reload()))))
+  })
+  const analyzeEmpties = () => guard(async () => {
+    setPart('empties', fromEmptyFolders(findEmptyFolders(await reload())))
+  })
 
   const testLinks = () => guard(async () => {
-    if (!tree) return
     // O pedido de permissão precisa vir direto do clique, antes de qualquer outra espera.
     if (!(await requestLinkCheckPermission())) {
       setMessage('Sem a permissão de acesso aos sites não dá para testar os links.')
       return
     }
-    const links = flattenLinks(tree)
+    const links = linksOf(await reload())
     abort.current = new AbortController()
     const statuses = await checkLinks(links.map((l) => l.url), {
       signal: abort.current.signal,
@@ -75,34 +86,38 @@ export default function CleanupTab() {
   })
 
   const apply = () => guard(async () => {
-    if (!tree) return
-    const plan = buildCleanupPlan(tree, [...selected], 'Limpeza de favoritos')
-    const moves = plan.operations.filter((o) => o.op === 'move').length
-    if (moves === 0) { setMessage('Nada para mover.'); return }
+    const { plan, moves, blocked } = await prepareCleanup(chromeBookmarksApi, [...selected], 'Limpeza de favoritos')
+    if (blocked) { setMessage(blocked); return }
+    if (moves === 0) { setMessage('Nada para mover: os itens marcados mudaram desde a análise. Analise de novo.'); return }
     if (!window.confirm(`Mover ${moves} item(ns) para a Lixeira?\n\nUm backup é feito antes e dá para desfazer.`)) return
     const r = await runPlan(plan, chromeBookmarksApi, Date.now())
-    const gone = new Set(selected)
+    const failedIds = new Set(r.failed.flatMap((f) => (f.op.op === 'move' ? [f.op.id] : [])))
+    const gone = new Set([...selected].filter((id) => !failedIds.has(id)))
     setParts((p) => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v.filter((c) => !gone.has(c.id))])) as Parts)
-    setSelected(clear())
+    setSelected(new Set(failedIds))
     await reload()
-    const failedMoves = r.failed.filter((f) => f.op.op === 'move')
-    const moved = moves - failedMoves.length
+    const moved = moves - failedIds.size
     setMessage(r.failed.length
-      ? `${moved} movido(s); ${r.failed.length} falharam (${r.failed.map((f) => f.error).join('; ')}).`
+      ? `${moved} movido(s); ${r.failed.length} falharam (${[...new Set(r.failed.map((f) => f.error))].slice(0, 3).join('; ')}).`
       : `${moved} item(ns) movido(s) para a Lixeira.`)
   })
 
   const undo = () => guard(async () => {
+    if (!lastInfo) return
+    const when = new Date(lastInfo.appliedAt).toLocaleString('pt-BR')
+    if (!window.confirm(`Desfazer "${lastInfo.label}" (${when})?`)) return
     const r = await undoLast(chromeBookmarksApi)
     await reload()
-    setMessage(r ? `Desfeito: ${r.undone} operação(ões)${r.skipped ? `, ${r.skipped} ignorada(s)` : ''}. Rode a análise de novo para atualizar a lista.` : 'Não há nada para desfazer.')
+    setMessage(r
+      ? `Desfeito: ${r.undone} operação(ões)${r.relocated ? `, ${r.relocated} item(ns) foram para Outros favoritos porque a pasta de origem mudou` : ''}${r.skipped ? `, ${r.skipped} ignorada(s)` : ''}. Rode a análise de novo para atualizar a lista.`
+      : 'Não há nada para desfazer.')
   })
 
   const purge = () => guard(async () => {
-    if (!tree || !trash) return
-    const n = flattenLinks([trash]).length
-    if (!window.confirm(`Apagar DE VEZ ${n} favorito(s) da Lixeira?\n\nO botão Desfazer NÃO recupera isso. Só o último backup, na aba Backups.`)) return
-    const r = await runPlan(buildPurgePlan(tree), chromeBookmarksApi, Date.now())
+    const { plan, count } = await preparePurge(chromeBookmarksApi)
+    if (plan.operations.length === 0) { setMessage('A Lixeira já está vazia.'); await reload(); return }
+    if (!window.confirm(`Apagar DE VEZ ${count} favorito(s) da Lixeira?\n\nO botão Desfazer NÃO recupera isso. Só o último backup, na aba Backups.`)) return
+    const r = await runPlan(plan, chromeBookmarksApi, Date.now())
     await reload()
     setMessage(r.failed.length ? `Falhou: ${r.failed[0]?.error}` : 'Lixeira esvaziada.')
   })
@@ -129,8 +144,8 @@ export default function CleanupTab() {
         )}
       </section>
 
-      {message && <p role="status" className="status">{message}{' '}{canUndo && <button onClick={undo} disabled={busy}>Desfazer a última limpeza</button>}</p>}
-      {!message && canUndo && <p><button onClick={undo} disabled={busy}>Desfazer a última limpeza</button></p>}
+      {message && <p role="status" className="status">{message}</p>}
+      {lastInfo && <p><button onClick={undo} disabled={busy}>Desfazer: {lastInfo.label} ({new Date(lastInfo.appliedAt).toLocaleString('pt-BR')})</button></p>}
 
       {candidates.length === 0 ? (
         <p>Rode uma análise para ver o que dá para limpar. Nada é alterado sem a sua confirmação.</p>

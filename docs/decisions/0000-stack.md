@@ -20,6 +20,7 @@ O código vive no WSL e o Chrome roda no Windows, então o `wxt dev` não conseg
 2. No Chrome: `chrome://extensions` → ativar **Modo do desenvolvedor** → **Carregar sem compactação**.
 3. Escolher a pasta `\\wsl.localhost\Ubuntu\home\<usuario>\organizar-favoritos\.output\chrome-mv3`.
 4. Depois de cada `npm run build`, clicar em recarregar na extensão em `chrome://extensions`.
+5. O manifesto tem uma `key` pública fixa, então o ID da extensão é sempre o mesmo, mesmo que a pasta do build mude de lugar. Os backups e o diário de desfazer ficam no IndexedDB atrelado a esse ID.
 
 **Status da verificação manual:** pendente. Os testes automatizados, o `compile` e o `build` passam; falta carregar no Chrome e conferir que o ícone aparece, o popup abre e "Abrir painel" abre a página completa.
 

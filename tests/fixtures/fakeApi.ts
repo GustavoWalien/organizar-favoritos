@@ -72,6 +72,9 @@ export function makeFakeApi(initial: BmNode[], log: string[] = []): FakeApi {
       const found = locate(id)
       if (!found?.parent) throw new Error(`nó ${id} não encontrado`)
       const target = folderOrThrow(parentId)
+      // Como no Chrome, valida antes de mexer: um move que falha não pode deixar o nó perdido.
+      const room = target.children.length - (found.parent === target ? 1 : 0)
+      if (index !== undefined && index > room) throw new Error('índice fora dos limites')
       found.parent.children.splice(found.parent.children.indexOf(found.node), 1)
       reindex(found.parent)
       target.children.splice(index ?? target.children.length, 0, found.node)

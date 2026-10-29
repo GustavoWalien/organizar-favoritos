@@ -8,7 +8,8 @@ export const chromeBookmarksApi: BookmarksApi = {
   },
   async get(id) {
     try {
-      const [node] = await browser.bookmarks.get(id)
+      // `bookmarks.get` não devolve os filhos das pastas; o desfazer precisa deles para saber se uma pasta está vazia.
+      const [node] = await browser.bookmarks.getSubTree(id)
       return node ? toBmNode(node) : undefined
     } catch {
       return undefined
