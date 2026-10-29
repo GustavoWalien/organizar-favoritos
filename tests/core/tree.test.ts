@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { flattenLinks, findNode, isProtected, otherBookmarksId, summarize } from '../../src/core/tree'
+import { flattenLinks, findNode, isProtected, otherBookmarksId, summarize, searchLinks, listFolders } from '../../src/core/tree'
 import { sampleTree } from '../fixtures/sampleTree'
 
 describe('tree', () => {
@@ -42,5 +42,20 @@ describe('tree', () => {
 
   it('summarize conta links, pastas (sem a raiz) e links com dateLastUsed positivo', () => {
     expect(summarize(sampleTree)).toEqual({ links: 3, folders: 4, withLastUsed: 1 })
+  })
+
+  it('searchLinks acha por título ou URL sem diferenciar maiúsculas e respeita o limite', () => {
+    const links = flattenLinks(sampleTree)
+    expect(searchLinks(links, 'github').map((l) => l.id)).toEqual(['11'])
+    expect(searchLinks(links, 'MOZILLA').map((l) => l.id)).toEqual(['10'])
+    expect(searchLinks(links, 'https', 2)).toHaveLength(2)
+  })
+
+  it('searchLinks devolve vazio para busca em branco', () => {
+    expect(searchLinks(flattenLinks(sampleTree), '   ')).toEqual([])
+  })
+
+  it('listFolders lista as pastas comuns com o caminho e ignora a raiz e suas filhas diretas', () => {
+    expect(listFolders(sampleTree)).toEqual([{ id: '5', title: 'Dev', path: ['Barra de favoritos'] }])
   })
 })

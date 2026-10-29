@@ -63,3 +63,37 @@ export function summarize(root: BmNode[]): TreeSummary {
   walk(root)
   return s
 }
+
+/** Busca por título ou URL, sem diferenciar maiúsculas. Busca em branco devolve vazio. */
+export function searchLinks(links: FlatLink[], query: string, limit = 50): FlatLink[] {
+  const q = query.trim().toLowerCase()
+  if (!q) return []
+  const out: FlatLink[] = []
+  for (const l of links) {
+    if (l.title.toLowerCase().includes(q) || l.url.toLowerCase().includes(q)) {
+      out.push(l)
+      if (out.length >= limit) break
+    }
+  }
+  return out
+}
+
+export interface FolderInfo {
+  id: string
+  title: string
+  path: string[]
+}
+
+/** Pastas comuns (sem a raiz nem as filhas diretas dela), com os títulos dos ancestrais. */
+export function listFolders(root: BmNode[]): FolderInfo[] {
+  const out: FolderInfo[] = []
+  const walk = (nodes: BmNode[], path: string[]) => {
+    for (const n of nodes) {
+      if (n.kind !== 'folder') continue
+      if (!isProtected(root, n.id)) out.push({ id: n.id, title: n.title, path })
+      walk(n.children, n.parentId === undefined ? path : [...path, n.title])
+    }
+  }
+  walk(root, [])
+  return out
+}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import BackupsTab from '../../ui/BackupsTab'
 import OverviewTab from '../../ui/OverviewTab'
 
 const TABS = ['Visão geral', 'Limpeza', 'Backups'] as const
@@ -18,7 +19,9 @@ export default function App() {
         ))}
       </nav>
       <section role="tabpanel">
-        {tab === 'Visão geral' ? <OverviewTab /> : <p>{tab}: em construção.</p>}
+        {tab === 'Visão geral' && <OverviewTab />}
+        {tab === 'Backups' && <BackupsTab />}
+        {tab === 'Limpeza' && <p>Limpeza: em construção.</p>}
       </section>
     </main>
   )
