@@ -1,7 +1,9 @@
 import 'fake-indexeddb/auto'
 import { IDBFactory } from 'fake-indexeddb'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { BACKUP_WINDOW_MS } from '../../src/core/backupPolicy'
 import { BackupFailedError, runPlan, undoLast } from '../../src/core/plan'
+import { listSnapshots } from '../../src/storage/snapshots'
 import type { BmFolder, JournalEntry, Plan, Snapshot } from '../../src/core/types'
 import { makeFakeApi } from '../fixtures/fakeApi'
 import { sampleTree } from '../fixtures/sampleTree'
@@ -147,5 +149,51 @@ describe('undoLast', () => {
 
   it('devolve null sem diário', async () => {
     expect(await undoLast(makeFakeApi(sampleTree))).toBeNull()
+  })
+})
+
+describe('runPlan com backup compartilhado', () => {
+  const move = (id: string, planId: string): Plan => plan([{ op: 'move', id, toParentId: '2' }], planId)
+
+  it('dois planos com shareBackup dentro da janela geram um snapshot só e o mesmo snapshotId', async () => {
+    const api = makeFakeApi(sampleTree)
+    const a = await runPlan(move('10', 'a'), api, 1_000, undefined, { shareBackup: true })
+    const b = await runPlan(move('11', 'b'), api, 61_000, undefined, { shareBackup: true })
+    expect(await listSnapshots()).toHaveLength(1)
+    expect(b.entry.snapshotId).toBe(a.entry.snapshotId)
+  })
+
+  it('depois da janela, shareBackup gera um novo snapshot', async () => {
+    const api = makeFakeApi(sampleTree)
+    await runPlan(move('10', 'a'), api, 1_000, undefined, { shareBackup: true })
+    await runPlan(move('11', 'b'), api, 1_000 + BACKUP_WINDOW_MS, undefined, { shareBackup: true })
+    expect(await listSnapshots()).toHaveLength(2)
+  })
+
+  it('sem shareBackup (limpeza, restauração), sempre faz backup novo mesmo dentro da janela', async () => {
+    const api = makeFakeApi(sampleTree)
+    await runPlan(move('10', 'a'), api, 1_000, undefined, { shareBackup: true })
+    await runPlan(move('11', 'b'), api, 2_000)
+    expect(await listSnapshots()).toHaveLength(2)
+  })
+
+  it('com shareBackup e janela fechada, se o snapshot novo falha, lança BackupFailedError e não aplica nada', async () => {
+    const api = makeFakeApi(sampleTree)
+    const store = {
+      saveSnapshot: async () => { throw new Error('cota estourada') },
+      saveEntry: async () => {},
+      latestAutoSnapshot: async () => undefined,
+    }
+    await expect(runPlan(move('10', 'a'), api, 1, store, { shareBackup: true })).rejects.toBeInstanceOf(BackupFailedError)
+    expect(api.calls).toEqual([])
+  })
+
+  it('o desfazer continua sendo por plano, mesmo com o backup compartilhado', async () => {
+    const api = makeFakeApi(sampleTree)
+    await runPlan(move('10', 'a'), api, 1_000, undefined, { shareBackup: true })
+    await runPlan(move('11', 'b'), api, 2_000, undefined, { shareBackup: true })
+    await undoLast(api)
+    expect((await api.get('11'))?.parentId).toBe('5')
+    expect((await api.get('10'))?.parentId).toBe('2')
   })
 })

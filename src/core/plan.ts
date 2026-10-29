@@ -1,5 +1,6 @@
 import { deleteEntry, lastEntry, saveEntry } from '../storage/journal'
-import { saveSnapshot } from '../storage/snapshots'
+import { latestAutoSnapshot, saveSnapshot } from '../storage/snapshots'
+import { canShareBackup } from './backupPolicy'
 import { createSnapshot } from './snapshot'
 import { isProtected, otherBookmarksId } from './tree'
 import type { BmFolder, BookmarksApi, JournalEntry, Operation, Plan, Snapshot } from './types'
@@ -14,6 +15,13 @@ export class BackupFailedError extends Error {
 export interface RunStore {
   saveSnapshot(s: Snapshot): Promise<void>
   saveEntry(e: JournalEntry): Promise<void>
+  /** Usado só quando o plano pede para compartilhar o backup. */
+  latestAutoSnapshot?(): Promise<Snapshot | undefined>
+}
+
+export interface RunOptions {
+  /** Reaproveita o backup automático feito há menos de 10 minutos em vez de criar outro. */
+  shareBackup?: boolean
 }
 
 export interface UndoStore {
@@ -37,14 +45,22 @@ export async function runPlan(
   plan: Plan,
   api: BookmarksApi,
   now: number,
-  store: RunStore = { saveSnapshot, saveEntry },
+  store: RunStore = { saveSnapshot, saveEntry, latestAutoSnapshot },
+  opts: RunOptions = {},
 ): Promise<RunResult> {
   const tree = await api.getTree()
-  const snapshot = createSnapshot(tree, plan.label, now)
-  try {
-    await store.saveSnapshot(snapshot)
-  } catch (e) {
-    throw new BackupFailedError(e)
+  const last = opts.shareBackup ? await store.latestAutoSnapshot?.().catch(() => undefined) : undefined
+  let snapshotId: string
+  if (last && canShareBackup(last, now)) {
+    snapshotId = last.id
+  } else {
+    const snapshot = createSnapshot(tree, plan.label, now)
+    try {
+      await store.saveSnapshot(snapshot)
+    } catch (e) {
+      throw new BackupFailedError(e)
+    }
+    snapshotId = snapshot.id
   }
 
   const realIds = new Map<string, string>()
@@ -81,7 +97,7 @@ export async function runPlan(
     }
   }
 
-  const entry: JournalEntry = { planId: plan.id, label: plan.label, appliedAt: now, snapshotId: snapshot.id, inverse }
+  const entry: JournalEntry = { planId: plan.id, label: plan.label, appliedAt: now, snapshotId, inverse }
   // Um plano sem inverso (só `remove`) não deve esconder o desfazer do plano anterior.
   if (inverse.length > 0) await store.saveEntry(entry)
   return { applied, failed, entry }

@@ -2,9 +2,9 @@ import type { BmNode, Snapshot } from './types'
 
 let counter = 0
 
-export function createSnapshot(tree: BmNode[], reason: string, now: number): Snapshot {
+export function createSnapshot(tree: BmNode[], reason: string, now: number, kind: 'auto' | 'manual' = 'auto'): Snapshot {
   counter++
-  return { id: `${now}-${counter.toString(36)}`, createdAt: now, reason, tree }
+  return { id: `${now}-${counter.toString(36)}`, createdAt: now, reason, kind, tree }
 }
 
 export function snapshotToJson(s: Snapshot): string {

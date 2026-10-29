@@ -43,6 +43,8 @@ export interface Snapshot {
   id: string
   createdAt: number
   reason: string
+  /** `manual` nunca é apagado automaticamente. Ausente (backups antigos) conta como `auto`. */
+  kind?: 'auto' | 'manual'
   tree: BmNode[]
 }
 

@@ -19,8 +19,14 @@ export async function getSnapshot(id: string): Promise<Snapshot | undefined> {
 }
 
 export async function pruneSnapshots(max = MAX_SNAPSHOTS): Promise<void> {
-  const all = await listSnapshots()
+  // Só os automáticos são podados; os manuais ficam para sempre.
+  const autos = (await listSnapshots()).filter((s) => s.kind !== 'manual')
   await withDb(async (db) => {
-    for (const old of all.slice(max)) await db.delete('snapshots', old.id)
+    for (const old of autos.slice(max)) await db.delete('snapshots', old.id)
   })
+}
+
+/** O backup automático mais recente (para decidir se um novo plano pode compartilhá-lo). */
+export async function latestAutoSnapshot(): Promise<Snapshot | undefined> {
+  return (await listSnapshots()).find((s) => s.kind !== 'manual')
 }
