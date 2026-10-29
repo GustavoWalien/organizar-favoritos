@@ -10,6 +10,7 @@ interface Props {
   view: View
   uncategorizedCount: number
   trashCount: number
+  cleanupCount: number
   onNavigate: (view: View) => void
   onNewFolder: () => void
   onDropLinks: (ids: string[], target: DropTarget) => void
@@ -58,7 +59,7 @@ function TreeItem({ node, depth, view, expanded, toggle, onNavigate, dropKey, dr
   )
 }
 
-export default function Sidebar({ folders, view, uncategorizedCount, trashCount, onNavigate, onNewFolder, onDropLinks }: Props) {
+export default function Sidebar({ folders, view, uncategorizedCount, trashCount, cleanupCount, onNavigate, onNewFolder, onDropLinks }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [dropKey, setDropKey] = useState<string | null>(null)
   const toggle = (id: string) => setExpanded((s) => {
@@ -86,9 +87,10 @@ export default function Sidebar({ folders, view, uncategorizedCount, trashCount,
     },
   })
 
-  const item = (name: View['name'], label: string, to: View) => (
+  const item = (name: View['name'], label: string, to: View, badge = 0) => (
     <button className={`nav-item${isCurrent(view, name) ? ' active' : ''}`} aria-current={isCurrent(view, name) ? 'page' : undefined} onClick={() => onNavigate(to)}>
       <span className="nav-label">{label}</span>
+      {badge > 0 && <span className="badge" aria-label={`${badge} itens para revisar`}>{badge}</span>}
     </button>
   )
 
@@ -97,7 +99,7 @@ export default function Sidebar({ folders, view, uncategorizedCount, trashCount,
       <div className="brand">🔖 Organizar Favoritos</div>
       <nav>
         {item('overview', '▦ Visão geral', { name: 'overview' })}
-        {item('cleanup', '🧹 Limpeza', { name: 'cleanup' })}
+        {item('cleanup', '🧹 Limpeza', { name: 'cleanup' }, cleanupCount)}
         {item('backups', '💾 Backups', { name: 'backups' })}
       </nav>
       <div className="section-title">

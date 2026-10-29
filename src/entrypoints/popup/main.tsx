@@ -15,7 +15,7 @@ function Popup() {
     }
   }
   return (
-    <div style={{ width: 220, padding: 12, display: 'grid', gap: 8, fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ width: 220, padding: 12, display: 'grid', gap: 8, fontFamily: 'system-ui, sans-serif', background: 'var(--bg, #14171d)', color: 'var(--text, #e8eaed)' }}>
       <button onClick={abrirPainel}>Abrir painel</button>
       <button onClick={backup}>Fazer backup</button>
       {status && <small role="status">{status}</small>}

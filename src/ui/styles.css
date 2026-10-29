@@ -137,3 +137,5 @@ kbd { margin-left: auto; font: inherit; font-size: 11px; border: 1px solid var(-
 .group-title { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-tertiary); padding: 8px 10px 4px; }
 .palette-meta { float: right; color: var(--text-tertiary); font-size: 12px; }
 .palette-hint { padding: 8px 16px; border-top: 1px solid var(--border); color: var(--text-tertiary); font-size: 12px; }
+
+.badge { background: var(--warn-bg); color: var(--warn-text); border-radius: 9px; padding: 0 7px; font-size: 11px; font-weight: 600; align-self: center; }

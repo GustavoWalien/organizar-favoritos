@@ -1,4 +1,4 @@
-import type { Candidate, Reason } from './selection'
+import type { Candidate, Reason } from '../selection'
 
 export const REASON_LABEL: Record<Reason, string> = {
   'sem-uso': 'Sem uso',

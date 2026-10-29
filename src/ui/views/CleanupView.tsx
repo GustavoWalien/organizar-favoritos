@@ -1,24 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { chromeBookmarksApi } from '../chrome/bookmarksApi'
-import { requestLinkCheckPermission } from '../chrome/permissions'
-import { findEmptyFolders, findTrash } from '../core/cleanup'
-import { findDuplicates } from '../core/duplicates'
-import { findInactive } from '../core/inactive'
-import { checkLinks } from '../core/linkStatus'
-import { BackupFailedError, runPlan, undoLast } from '../core/plan'
-import { flattenLinks } from '../core/tree'
-import type { BmNode, JournalEntry } from '../core/types'
-import { lastEntry } from '../storage/journal'
-import { prepareCleanup, preparePurge } from './cleanupActions'
-import { fromDuplicates, fromEmptyFolders, fromInactive, fromLinkStatuses } from './candidates'
-import LinkReviewList, { REASON_LABEL } from './LinkReviewList'
-import { clear, filterByReason, mergeCandidates, selectAll, toggleOne, type Candidate, type Reason } from './selection'
+import { chromeBookmarksApi } from '../../chrome/bookmarksApi'
+import { requestLinkCheckPermission } from '../../chrome/permissions'
+import { findEmptyFolders, findTrash } from '../../core/cleanup'
+import { findDuplicates } from '../../core/duplicates'
+import { findInactive } from '../../core/inactive'
+import { checkLinks } from '../../core/linkStatus'
+import { BackupFailedError, runPlan, undoLast } from '../../core/plan'
+import { flattenLinks } from '../../core/tree'
+import type { BmNode, JournalEntry } from '../../core/types'
+import { lastEntry } from '../../storage/journal'
+import { prepareCleanup, preparePurge } from '../cleanupActions'
+import { fromDuplicates, fromEmptyFolders, fromInactive, fromLinkStatuses } from '../candidates'
+import { startAnalysis, type CleanupStart } from '../cleanupStart'
+import LinkReviewList, { REASON_LABEL } from '../components/LinkReviewList'
+import { clear, filterByReason, mergeCandidates, selectAll, toggleOne, type Candidate, type Reason } from '../selection'
 
 const PAGE = 200
 type Parts = Record<'inactive' | 'dups' | 'links' | 'empties', Candidate[]>
 const EMPTY: Parts = { inactive: [], dups: [], links: [], empties: [] }
 
-export default function CleanupTab() {
+export default function CleanupView({ start }: { start?: CleanupStart }) {
   const [tree, setTree] = useState<BmNode[] | null>(null)
   const [parts, setParts] = useState<Parts>(EMPTY)
   const [selected, setSelected] = useState<Set<string>>(clear())
@@ -40,6 +41,16 @@ export default function CleanupTab() {
     return fresh
   }, [])
   useEffect(() => { void reload() }, [reload])
+
+  // Vindo de um cartão da Visão geral: roda a análise correspondente uma única vez, assim que a árvore chega.
+  const started = useRef(false)
+  useEffect(() => {
+    if (started.current || !tree) return
+    started.current = true
+    const which = startAnalysis(start)
+    if (which === 'inactive') void analyzeInactive()
+    else if (which === 'dups') void analyzeDuplicates()
+  }, [tree, start])
 
   const candidates = useMemo(() => mergeCandidates(Object.values(parts).flat()), [parts])
   const visible = useMemo(() => filterByReason(candidates, filter), [candidates, filter])
@@ -140,7 +151,7 @@ export default function CleanupTab() {
             <button onClick={() => abort.current?.abort()}>Cancelar</button>
           </>
         ) : (
-          <button onClick={testLinks} disabled={busy}>Testar links</button>
+          <button className={start === 'quebrado' ? 'primary' : undefined} onClick={testLinks} disabled={busy}>Testar links</button>
         )}
       </section>
 

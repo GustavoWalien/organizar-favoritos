@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { computeOverview } from '../../core/overview'
+import type { Overview } from '../../core/overview'
 import type { FolderOption } from '../../core/folders'
 import { uncategorizedLinks } from '../../core/folders'
 import type { View } from '../../core/route'
@@ -9,6 +9,7 @@ import type { ViewMode } from '../viewMode'
 
 interface Props {
   tree: BmNode[]
+  overview: Overview
   mode: ViewMode
   folderOptions: FolderOption[]
   busy: boolean
@@ -31,8 +32,7 @@ function Tile({ value, label, tone, onClick }: { value: string; label: string; t
   )
 }
 
-export default function OverviewView({ tree, mode, folderOptions, busy, onNavigate, onMove, onTrash }: Props) {
-  const overview = useMemo(() => computeOverview(tree, Date.now()), [tree])
+export default function OverviewView({ tree, overview, mode, folderOptions, busy, onNavigate, onMove, onTrash }: Props) {
   const loose = useMemo(() => uncategorizedLinks(tree), [tree])
 
   return (

@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { chromeBookmarksApi } from '../chrome/bookmarksApi'
-import { runPlan, BackupFailedError } from '../core/plan'
-import { planRestoreAll, planRestoreItem } from '../core/restore'
-import { snapshotToJson, snapshotToNetscapeHtml } from '../core/snapshot'
-import { flattenLinks, listFolders, searchLinks, summarize } from '../core/tree'
-import type { Plan, Snapshot } from '../core/types'
-import { listSnapshots } from '../storage/snapshots'
-import { makeBackup } from './backupActions'
-import { downloadText } from './download'
-import { backupFileName } from './fileName'
+import { chromeBookmarksApi } from '../../chrome/bookmarksApi'
+import { runPlan, BackupFailedError } from '../../core/plan'
+import { planRestoreAll, planRestoreItem } from '../../core/restore'
+import { snapshotToJson, snapshotToNetscapeHtml } from '../../core/snapshot'
+import { flattenLinks, listFolders, searchLinks, summarize } from '../../core/tree'
+import type { Plan, Snapshot } from '../../core/types'
+import { listSnapshots } from '../../storage/snapshots'
+import { makeBackup } from '../backupActions'
+import { downloadText } from '../download'
+import { backupFileName } from '../fileName'
 
 const when = (t: number) => new Date(t).toLocaleString('pt-BR')
 
@@ -17,7 +17,7 @@ function describePlan(plan: Plan): string {
   return `${plan.label}: criar ${count('create-folder')} pasta(s) e ${count('create-link')} favorito(s), mover ${count('move')}.`
 }
 
-export default function BackupsTab() {
+export default function BackupsView() {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [open, setOpen] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -84,7 +84,7 @@ export default function BackupsTab() {
       <ul className="list">
         {snapshots.map((s) => (
           <li key={s.id}>
-            <strong>{when(s.createdAt)}</strong> — {s.reason} — {summarize(s.tree).links} favoritos
+            <strong>{when(s.createdAt)}</strong> <span className="tag">{s.kind === 'manual' ? 'manual' : 'automático'}</span> {s.reason} — {summarize(s.tree).links} favoritos
             <div className="actions">
               <button onClick={() => downloadText(backupFileName(s.createdAt, 'json'), snapshotToJson(s), 'application/json')}>Exportar JSON</button>
               <button onClick={() => downloadText(backupFileName(s.createdAt, 'html'), snapshotToNetscapeHtml(s), 'text/html')}>Exportar HTML</button>

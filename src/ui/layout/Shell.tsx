@@ -3,14 +3,15 @@ import { buildFolderTree, directLinks, findFolderNode, folderOptions, folderPath
 import { findTrash } from '../../core/cleanup'
 import type { PaletteAction } from '../../core/palette'
 import type { View } from '../../core/route'
+import { computeOverview } from '../../core/overview'
 import { flattenLinks, otherBookmarksId } from '../../core/tree'
 import CommandPalette from '../components/CommandPalette'
 import MovePicker from '../components/MovePicker'
 import Toast from '../components/Toast'
 import { makeBackup } from '../backupActions'
 import { useLibrary } from '../state/useLibrary'
-import BackupsTab from '../BackupsTab'
-import CleanupTab from '../CleanupTab'
+import BackupsView from '../views/BackupsView'
+import CleanupView from '../views/CleanupView'
 import OverviewView from '../views/OverviewView'
 import FolderView from '../views/FolderView'
 import TrashView from '../views/TrashView'
@@ -28,6 +29,8 @@ export default function Shell() {
 
   const tree = lib.tree
   const allLinks = useMemo(() => (tree ? flattenLinks(tree, findTrash(tree)?.id) : []), [tree])
+
+  const overview = useMemo(() => (tree ? computeOverview(tree, Date.now()) : null), [tree])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -88,11 +91,11 @@ export default function Shell() {
   } else if (view.name === 'trash') {
     content = <TrashView tree={tree} mode={mode} busy={lib.busy} onChanged={lib.reload} onNotify={lib.notify} folderOptions={options} onMove={lib.move} />
   } else if (view.name === 'cleanup') {
-    content = <CleanupTab />
+    content = <CleanupView key={`cleanup-${view.start ?? ''}`} start={view.start} />
   } else if (view.name === 'backups') {
-    content = <BackupsTab />
+    content = <BackupsView />
   } else {
-    content = <OverviewView tree={tree} mode={mode} folderOptions={options} busy={lib.busy} onNavigate={setView} onMove={lib.move} onTrash={lib.trash} />
+    content = <OverviewView tree={tree} overview={overview!} mode={mode} folderOptions={options} busy={lib.busy} onNavigate={setView} onMove={lib.move} onTrash={lib.trash} />
   }
 
   return (
@@ -101,6 +104,7 @@ export default function Shell() {
         folders={folders}
         view={view}
         uncategorizedCount={uncategorizedLinks(tree).length}
+        cleanupCount={overview ? overview.inactive + overview.duplicates : 0}
         trashCount={trash ? flattenLinks([trash]).length : 0}
         onNavigate={setView}
         onNewFolder={newFolder}
