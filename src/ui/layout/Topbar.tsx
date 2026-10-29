@@ -6,6 +6,7 @@ interface Props {
   showViewMode: boolean
   mode: ViewMode
   onMode: (mode: ViewMode) => void
+  onOpenPalette: () => void
 }
 
 const MODES: { value: ViewMode; label: string }[] = [
@@ -14,7 +15,7 @@ const MODES: { value: ViewMode; label: string }[] = [
   { value: 'compacto', label: '≡ Compacto' },
 ]
 
-export default function Topbar({ breadcrumb, showViewMode, mode, onMode }: Props) {
+export default function Topbar({ breadcrumb, showViewMode, mode, onMode, onOpenPalette }: Props) {
   const last = breadcrumb.length - 1
   return (
     <header className="topbar">
@@ -24,6 +25,9 @@ export default function Topbar({ breadcrumb, showViewMode, mode, onMode }: Props
         ))}
       </div>
       <div className="topbar-spacer" />
+      <button className="search-pill" onClick={onOpenPalette} aria-label="Buscar ou ir para (Ctrl K)">
+        🔍 Buscar ou ir para… <kbd>Ctrl K</kbd>
+      </button>
       {showViewMode && (
         <div className="segmented" role="radiogroup" aria-label="Modo de visualização">
           {MODES.map((m) => (

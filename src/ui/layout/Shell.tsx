@@ -1,9 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { buildFolderTree, directLinks, findFolderNode, folderOptions, folderPath, sidebarFolders, uncategorizedLinks } from '../../core/folders'
 import { findTrash } from '../../core/cleanup'
+import type { PaletteAction } from '../../core/palette'
 import type { View } from '../../core/route'
 import { flattenLinks, otherBookmarksId } from '../../core/tree'
+import CommandPalette from '../components/CommandPalette'
+import MovePicker from '../components/MovePicker'
 import Toast from '../components/Toast'
+import { makeBackup } from '../backupActions'
 import { useLibrary } from '../state/useLibrary'
 import BackupsTab from '../BackupsTab'
 import CleanupTab from '../CleanupTab'
@@ -19,7 +23,23 @@ export default function Shell() {
   const [view, setView] = useState<View>({ name: 'overview' })
   const [mode, setMode] = useState<ViewMode>(loadViewMode)
 
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [moveIds, setMoveIds] = useState<string[] | null>(null)
+
   const tree = lib.tree
+  const allLinks = useMemo(() => (tree ? flattenLinks(tree, findTrash(tree)?.id) : []), [tree])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((open) => !open)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   if (!tree) return <p className="loading">Lendo favoritos…</p>
 
   const folders = sidebarFolders(tree)
@@ -31,6 +51,16 @@ export default function Shell() {
     if (target.kind === 'folder') void lib.move(ids, target.id)
     else if (target.kind === 'uncategorized') void lib.move(ids, otherBookmarksId(tree))
     else void lib.trash(ids)
+  }
+
+  const runAction = (action: PaletteAction) => {
+    setPaletteOpen(false)
+    if (action === 'backup') {
+      makeBackup().then(() => lib.notify('Backup feito'), (e) => lib.notify(`Erro: ${e instanceof Error ? e.message : String(e)}`))
+    } else if (action === 'analisar-sem-uso') setView({ name: 'cleanup', start: 'sem-uso' })
+    else if (action === 'achar-duplicados') setView({ name: 'cleanup', start: 'duplicado' })
+    else if (action === 'testar-links') setView({ name: 'cleanup', start: 'quebrado' })
+    else setView({ name: 'trash' })
   }
 
   const newFolder = () => {
@@ -77,9 +107,23 @@ export default function Shell() {
         onDropLinks={dropLinks}
       />
       <div className="main">
-        <Topbar breadcrumb={breadcrumb} showViewMode={listView} mode={mode} onMode={changeMode} />
+        <Topbar breadcrumb={breadcrumb} showViewMode={listView} mode={mode} onMode={changeMode} onOpenPalette={() => setPaletteOpen(true)} />
         <div className="content">{content}</div>
       </div>
+      {paletteOpen && (
+        <CommandPalette
+          links={allLinks}
+          folders={options}
+          onClose={() => setPaletteOpen(false)}
+          onPickLink={(_id, parentId) => { setPaletteOpen(false); setView({ name: 'folder', id: parentId }) }}
+          onMoveLink={(id) => { setPaletteOpen(false); setMoveIds([id]) }}
+          onPickFolder={(id) => { setPaletteOpen(false); setView({ name: 'folder', id }) }}
+          onAction={runAction}
+        />
+      )}
+      {moveIds && (
+        <MovePicker options={options} count={moveIds.length} onClose={() => setMoveIds(null)} onPick={(folderId) => { void lib.move(moveIds, folderId); setMoveIds(null) }} />
+      )}
       {lib.toast && (
         <Toast
           key={lib.toast.id}

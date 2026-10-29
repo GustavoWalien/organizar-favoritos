@@ -127,3 +127,13 @@ button.tile:hover { background: var(--raised); }
 .tile.warn { background: var(--warn-bg); } .tile.warn .tile-value, .tile.warn .tile-label { color: var(--warn-text); }
 .tile.danger { background: var(--danger-bg); } .tile.danger .tile-value, .tile.danger .tile-label { color: var(--danger-text); }
 .tile.ok { background: var(--ok-bg); } .tile.ok .tile-value, .tile.ok .tile-label { color: var(--ok-text); }
+
+/* ---- paleta de comandos ---- */
+.search-pill { display: inline-flex; gap: 10px; align-items: center; min-width: 240px; color: var(--text-secondary); }
+kbd { margin-left: auto; font: inherit; font-size: 11px; border: 1px solid var(--border); border-radius: 5px; padding: 0 5px; color: var(--text-tertiary); }
+.palette { padding: 0; gap: 0; }
+.palette > input { border: 0; border-bottom: 1px solid var(--border); border-radius: 14px 14px 0 0; padding: 14px 16px; background: transparent; }
+.palette .dialog-list { padding: 8px; }
+.group-title { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-tertiary); padding: 8px 10px 4px; }
+.palette-meta { float: right; color: var(--text-tertiary); font-size: 12px; }
+.palette-hint { padding: 8px 16px; border-top: 1px solid var(--border); color: var(--text-tertiary); font-size: 12px; }
