@@ -27,6 +27,9 @@ export interface RunResult {
   entry: JournalEntry
 }
 
+/** Id único para um plano (o diário usa o id como chave). */
+export const newPlanId = (prefix: string): string => `${prefix}-${crypto.randomUUID()}`
+
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 /** Plano → backup → aplicar → diário. O backup falhando impede qualquer mudança. */
