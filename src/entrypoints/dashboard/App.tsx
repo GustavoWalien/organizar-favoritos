@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ThemeToggle from '../../ui/theme/ThemeToggle'
 import BackupsTab from '../../ui/BackupsTab'
 import CleanupTab from '../../ui/CleanupTab'
 import OverviewTab from '../../ui/OverviewTab'
@@ -11,7 +12,10 @@ export default function App() {
 
   return (
     <main className="app">
-      <h1>Organizar Favoritos</h1>
+      <header className="app-header">
+        <h1>Organizar Favoritos</h1>
+        <ThemeToggle />
+      </header>
       <nav className="tabs" role="tablist">
         {TABS.map((t) => (
           <button key={t} role="tab" aria-selected={t === tab} onClick={() => setTab(t)}>
