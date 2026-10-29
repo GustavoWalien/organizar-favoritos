@@ -1,0 +1,6 @@
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+body { margin: 0; }
+.app { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+.tabs { display: flex; gap: 8px; border-bottom: 1px solid #8884; margin-bottom: 16px; }
+.tabs button { background: none; border: 0; padding: 8px 12px; cursor: pointer; font: inherit; border-bottom: 2px solid transparent; }
+.tabs button[aria-selected='true'] { border-bottom-color: currentColor; font-weight: 600; }
