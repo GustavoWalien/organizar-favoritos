@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
+import { browser } from 'wxt/browser'
 import { chromeBookmarksApi } from '../../chrome/bookmarksApi'
+import { watchBookmarks } from '../../chrome/watch'
 import { describeMove, moveLinks, planCreateFolder } from '../../core/moves'
-import { BackupFailedError, runPlan, undoLast } from '../../core/plan'
+import { BackupFailedError, runPlan, undoIfLatest, undoLast } from '../../core/plan'
 import { prepareCleanup } from '../cleanupActions'
 import type { BmNode, JournalEntry } from '../../core/types'
 import { lastEntry } from '../../storage/journal'
@@ -11,6 +13,8 @@ export interface ToastState {
   message: string
   /** O botão "Desfazer" só aparece quando algo foi de fato movido. */
   undoable: boolean
+  /** O plano que o botão "Desfazer" do aviso desfaz. */
+  planId?: string
 }
 
 const errorText = (e: unknown) => (e instanceof BackupFailedError ? e.message : `Erro: ${e instanceof Error ? e.message : String(e)}`)
@@ -31,7 +35,10 @@ export function useLibrary() {
   }, [])
   useEffect(() => { void reload() }, [reload])
 
-  const notify = (message: string, undoable = false) => setToast({ id: Date.now(), message, undoable })
+  // Qualquer mudança nos favoritos (Limpeza, Backups, Chrome, sincronização) atualiza a árvore do painel.
+  useEffect(() => watchBookmarks(browser.bookmarks, () => { void reload() }), [reload])
+
+  const notify = (message: string, undoable = false, planId?: string) => setToast({ id: Date.now(), message, undoable, planId })
 
   const move = useCallback(async (ids: string[], folderId: string) => {
     if (busy) return
@@ -39,7 +46,7 @@ export function useLibrary() {
     try {
       const result = await moveLinks(chromeBookmarksApi, ids, folderId, Date.now())
       await reload()
-      notify(describeMove(result), result.moved > 0)
+      notify(describeMove(result), result.moved > 0, result.planId)
     } catch (e) {
       notify(errorText(e))
     } finally {
@@ -63,7 +70,7 @@ export function useLibrary() {
       const r = await runPlan(plan, chromeBookmarksApi, Date.now(), undefined, { shareBackup: true })
       await reload()
       const moved = moves - r.failed.length
-      notify(`${moved} ${moved === 1 ? 'favorito movido' : 'favoritos movidos'} para a Lixeira`, moved > 0)
+      notify(`${moved} ${moved === 1 ? 'favorito movido' : 'favoritos movidos'} para a Lixeira`, moved > 0, moved > 0 ? r.entry.planId : undefined)
     } catch (e) {
       notify(errorText(e))
     } finally {
@@ -82,7 +89,7 @@ export function useLibrary() {
       }
       const r = await runPlan(plan, chromeBookmarksApi, Date.now(), undefined, { shareBackup: true })
       await reload()
-      notify(r.failed.length ? `Não foi possível criar a pasta: ${r.failed[0]?.error}` : `Pasta "${title.trim()}" criada`, r.applied > 0)
+      notify(r.failed.length ? `Não foi possível criar a pasta: ${r.failed[0]?.error}` : `Pasta "${title.trim()}" criada`, r.applied > 0, r.applied > 0 ? r.entry.planId : undefined)
     } catch (e) {
       notify(errorText(e))
     } finally {
@@ -90,15 +97,22 @@ export function useLibrary() {
     }
   }, [busy, reload])
 
-  const undo = useCallback(async () => {
-    if (busy) return
+  /** Desfaz o plano `planId` (se ainda for o mais recente) ou, sem id, o mais recente. Devolve se desfez. */
+  const undo = useCallback(async (planId?: string): Promise<boolean> => {
+    if (busy) return false
     setBusy(true)
     try {
-      const r = await undoLast(chromeBookmarksApi)
+      const r = planId ? await undoIfLatest(chromeBookmarksApi, planId) : await undoLast(chromeBookmarksApi)
       await reload()
+      if (r === 'outdated') {
+        notify('Esse movimento não é mais o mais recente: desfaça primeiro o que veio depois')
+        return false
+      }
       notify(r ? `Desfeito${r.relocated ? ` (${r.relocated} foram para Outros favoritos porque a pasta de origem mudou)` : ''}` : 'Não há nada para desfazer')
+      return r !== null
     } catch (e) {
       notify(errorText(e))
+      return false
     } finally {
       setBusy(false)
     }

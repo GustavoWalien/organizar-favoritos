@@ -28,6 +28,8 @@ export interface MoveResult {
   /** Falharam na hora de mover. */
   failed: number
   targetTitle: string
+  /** O plano aplicado (para desfazer exatamente ele); ausente quando nada foi movido. */
+  planId?: string
 }
 
 /** Move links usando a árvore de agora; os movimentos em sequência compartilham o backup automático. */
@@ -41,7 +43,8 @@ export async function moveLinks(api: BookmarksApi, linkIds: string[], targetFold
 
   const result = await runPlan(plan, api, now, undefined, { shareBackup: true })
   const failed = result.failed.length
-  return { moved: plan.operations.length - failed, skipped: unique - plan.operations.length, failed, targetTitle }
+  const moved = plan.operations.length - failed
+  return { moved, skipped: unique - plan.operations.length, failed, targetTitle, planId: moved > 0 ? result.entry.planId : undefined }
 }
 
 export function describeMove(r: MoveResult): string {

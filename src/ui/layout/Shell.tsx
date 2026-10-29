@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { buildFolderTree, directLinks, findFolderNode, folderOptions, folderPath, sidebarFolders, uncategorizedLinks } from '../../core/folders'
+import { buildFolderTree, directLinks, findFolderNode, folderOptions, folderPath, linksInSubfolders, sidebarFolders, uncategorizedLinks } from '../../core/folders'
 import { findTrash } from '../../core/cleanup'
 import type { PaletteAction } from '../../core/palette'
 import type { View } from '../../core/route'
@@ -52,7 +52,12 @@ export default function Shell() {
 
   const dropLinks = (ids: string[], target: DropTarget) => {
     if (target.kind === 'folder') void lib.move(ids, target.id)
-    else if (target.kind === 'uncategorized') void lib.move(ids, otherBookmarksId(tree))
+    else if (target.kind === 'uncategorized') {
+      // Só sai de lugar o que está numa subpasta ou na Lixeira; o que já está solto numa pasta raiz fica onde está.
+      const movable = linksInSubfolders(tree, ids)
+      if (movable.length === 0) lib.notify('Esses favoritos já estão sem categoria')
+      else void lib.move(movable, otherBookmarksId(tree))
+    }
     else void lib.trash(ids)
   }
 
@@ -133,7 +138,7 @@ export default function Shell() {
           key={lib.toast.id}
           message={lib.toast.message}
           actionLabel={lib.toast.undoable ? 'Desfazer' : undefined}
-          onAction={lib.undo}
+          onAction={() => lib.undo(lib.toast?.planId)}
           onClose={lib.dismissToast}
         />
       )}

@@ -3,7 +3,7 @@ import { IDBFactory } from 'fake-indexeddb'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { TRASH_TITLE } from '../../src/core/cleanup'
 import { describeMove, moveLinks, planCreateFolder, planMoveLinks } from '../../src/core/moves'
-import { undoLast } from '../../src/core/plan'
+import { undoIfLatest, undoLast } from '../../src/core/plan'
 import type { BmFolder, BmNode } from '../../src/core/types'
 import { makeFakeApi } from '../fixtures/fakeApi'
 import { sampleTree } from '../fixtures/sampleTree'
@@ -64,6 +64,18 @@ describe('moveLinks', () => {
     expect(r).toMatchObject({ moved: 2, skipped: 1, failed: 0, targetTitle: 'Lazer' })
     expect((await api.get('10'))?.parentId).toBe('6')
     expect((await api.get('20'))?.parentId).toBe('6')
+  })
+
+  it('devolve o id do plano aplicado, para o aviso desfazer exatamente aquele plano', async () => {
+    const api = makeFakeApi(tree())
+    const r = await moveLinks(api, ['10'], '6', 1_000)
+    expect(r.planId).toBeTruthy()
+    expect(await undoIfLatest(api, r.planId!)).toMatchObject({ undone: 1 })
+  })
+
+  it('sem nada movido não há planId', async () => {
+    const r = await moveLinks(makeFakeApi(tree()), ['10'], '5', 1_000)
+    expect(r.planId).toBeUndefined()
   })
 
   it('soltar na pasta de origem não faz nada nem cria backup', async () => {

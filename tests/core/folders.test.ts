@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { TRASH_TITLE } from '../../src/core/cleanup'
-import { buildFolderTree, directLinks, findFolderNode, folderOptions, folderPath, sidebarFolders, uncategorizedLinks } from '../../src/core/folders'
+import { buildFolderTree, directLinks, findFolderNode, folderOptions, folderPath, linksInSubfolders, sidebarFolders, uncategorizedLinks } from '../../src/core/folders'
 import type { BmFolder, BmLink, BmNode } from '../../src/core/types'
 
 const lnk = (id: string, parentId: string): BmLink => ({ kind: 'link', id, parentId, title: `L${id}`, url: `https://${id}.com/`, dateAdded: 1 })
@@ -89,5 +89,18 @@ describe('folders', () => {
     const ids = folderOptions(t).map((o) => o.id)
     expect(new Set(ids).size).toBe(ids.length)
     expect(folderOptions(t).find((o) => o.id === '32')?.label).toBe('Barra › (sem nome)')
+  })
+
+  it('linksInSubfolders deixa de fora os links que já estão direto numa pasta raiz', () => {
+    // s1 está direto na Barra, o1 direto em Outros: já são "sem categoria"
+    expect(linksInSubfolders(tree(), ['s1', 'o1'])).toEqual([])
+  })
+
+  it('linksInSubfolders mantém links de subpastas e da Lixeira, na ordem recebida', () => {
+    expect(linksInSubfolders(tree(), ['c', 's1', 't1', 'a'])).toEqual(['c', 't1', 'a'])
+  })
+
+  it('linksInSubfolders ignora ids de pastas e ids que não existem', () => {
+    expect(linksInSubfolders(tree(), ['10', '999', 'c'])).toEqual(['c'])
   })
 })

@@ -23,7 +23,11 @@ export default function CommandPalette({ links, folders, onClose, onPickLink, on
   const input = useRef<HTMLInputElement>(null)
   const dialog = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { input.current?.focus() }, [])
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    input.current?.focus()
+    return () => opener?.focus?.() // devolve o foco a quem abriu o diálogo
+  }, [])
 
   const results = useMemo(() => searchPalette(query, links, folders), [query, links, folders])
   const current = Math.min(active, Math.max(results.length - 1, 0))
@@ -45,12 +49,9 @@ export default function CommandPalette({ links, folders, onClose, onPickLink, on
     else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(Math.max(current - 1, 0)) }
     else if (e.key === 'Enter') { e.preventDefault(); run(results[current], e.ctrlKey || e.metaKey) }
     else if (e.key === 'Tab') {
-      const items = dialog.current?.querySelectorAll<HTMLElement>('input, button')
-      if (!items || items.length === 0) return
-      const first = items[0]!
-      const last = items[items.length - 1]!
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+      // O único campo que recebe Tab é a busca (os resultados usam as setas): o foco nunca sai do diálogo.
+      e.preventDefault()
+      input.current?.focus()
     }
   }
 

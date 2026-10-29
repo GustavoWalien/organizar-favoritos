@@ -16,7 +16,11 @@ export default function MovePicker({ options, count, onPick, onClose }: Props) {
   const input = useRef<HTMLInputElement>(null)
   const dialog = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { input.current?.focus() }, [])
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    input.current?.focus()
+    return () => opener?.focus?.() // devolve o foco a quem abriu o diálogo
+  }, [])
 
   const q = normalizeText(query)
   const results = useMemo(() => (q ? options.filter((o) => normalizeText(o.label).includes(q)) : options).slice(0, 50), [options, q])
@@ -28,13 +32,9 @@ export default function MovePicker({ options, count, onPick, onClose }: Props) {
     else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(Math.max(current - 1, 0)) }
     else if (e.key === 'Enter') { e.preventDefault(); const pick = results[current]; if (pick) onPick(pick.id) }
     else if (e.key === 'Tab') {
-      // mantém o foco dentro do diálogo
-      const items = dialog.current?.querySelectorAll<HTMLElement>('input, button')
-      if (!items || items.length === 0) return
-      const first = items[0]!
-      const last = items[items.length - 1]!
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+      // O único campo que recebe Tab é a busca (os resultados usam as setas): o foco nunca sai do diálogo.
+      e.preventDefault()
+      input.current?.focus()
     }
   }
 

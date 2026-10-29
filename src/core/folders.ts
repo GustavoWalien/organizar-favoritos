@@ -89,3 +89,15 @@ export function folderOptions(root: BmNode[]): FolderOption[] {
   walk(rootFolders(root), [])
   return out
 }
+
+/**
+ * Dos ids dados, os links que NÃO estão direto numa pasta raiz (estão numa subpasta ou na Lixeira).
+ * Serve para "Sem categoria": o que já está solto na Barra, em Outros ou em Mobile não deve se mexer.
+ */
+export function linksInSubfolders(root: BmNode[], ids: string[]): string[] {
+  const rootIds = new Set(rootFolders(root).map((f) => f.id))
+  return ids.filter((id) => {
+    const node = findNode(root, id)
+    return node !== undefined && isLink(node) && !rootIds.has(node.parentId)
+  })
+}

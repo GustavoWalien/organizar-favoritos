@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { IDBFactory } from 'fake-indexeddb'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { BACKUP_WINDOW_MS } from '../../src/core/backupPolicy'
-import { BackupFailedError, runPlan, undoLast } from '../../src/core/plan'
+import { BackupFailedError, runPlan, undoIfLatest, undoLast } from '../../src/core/plan'
 import { listSnapshots } from '../../src/storage/snapshots'
 import type { BmFolder, JournalEntry, Plan, Snapshot } from '../../src/core/types'
 import { makeFakeApi } from '../fixtures/fakeApi'
@@ -195,5 +195,27 @@ describe('runPlan com backup compartilhado', () => {
     await undoLast(api)
     expect((await api.get('11'))?.parentId).toBe('5')
     expect((await api.get('10'))?.parentId).toBe('2')
+  })
+})
+
+describe('undoIfLatest', () => {
+  it('desfaz quando o plano pedido é o mais recente', async () => {
+    const api = makeFakeApi(sampleTree)
+    await runPlan(plan([{ op: 'move', id: '10', toParentId: '2' }], 'a'), api, 1)
+    expect(await undoIfLatest(api, 'a')).toEqual({ undone: 1, skipped: 0, relocated: 0 })
+    expect((await api.get('10'))?.parentId).toBe('5')
+  })
+
+  it('devolve "outdated" e não mexe em nada quando há um plano mais recente', async () => {
+    const api = makeFakeApi(sampleTree)
+    await runPlan(plan([{ op: 'move', id: '10', toParentId: '2' }], 'a'), api, 1)
+    await runPlan(plan([{ op: 'move', id: '11', toParentId: '2' }], 'b'), api, 2)
+    expect(await undoIfLatest(api, 'a')).toBe('outdated')
+    expect((await api.get('10'))?.parentId).toBe('2')
+    expect((await api.get('11'))?.parentId).toBe('2')
+  })
+
+  it('devolve null quando não há diário', async () => {
+    expect(await undoIfLatest(makeFakeApi(sampleTree), 'a')).toBeNull()
   })
 })

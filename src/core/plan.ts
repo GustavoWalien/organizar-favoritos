@@ -146,3 +146,15 @@ export async function undoLast(
   await store.deleteEntry(entry.planId)
   return { undone, skipped, relocated }
 }
+
+/** Desfaz o plano `planId` só se ele ainda for o mais recente; senão devolve "outdated" e não mexe em nada. */
+export async function undoIfLatest(
+  api: BookmarksApi,
+  planId: string,
+  store: UndoStore = { lastEntry, deleteEntry },
+): Promise<{ undone: number; skipped: number; relocated: number } | 'outdated' | null> {
+  const last = await store.lastEntry()
+  if (!last) return null
+  if (last.planId !== planId) return 'outdated'
+  return undoLast(api, store)
+}

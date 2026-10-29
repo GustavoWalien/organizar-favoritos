@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 interface Props {
   message: string
   actionLabel?: string
-  onAction?: () => void
+  /** Devolver `false` mantém o aviso aberto (a ação não foi feita). */
+  onAction?: () => boolean | void | Promise<boolean | void>
   onClose: () => void
   durationMs?: number
 }
@@ -30,7 +31,7 @@ export default function Toast({ message, actionLabel, onAction, onClose, duratio
     >
       <span>{message}</span>
       {actionLabel && onAction && (
-        <button className="toast-action" onClick={() => { onAction(); onClose() }}>{actionLabel}</button>
+        <button className="toast-action" onClick={async () => { if ((await onAction()) !== false) onClose() }}>{actionLabel}</button>
       )}
       <button className="toast-close" aria-label="Fechar aviso" onClick={onClose}>✕</button>
     </div>
