@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import type { FolderNode } from '../../core/folders'
+import type { FolderNode, FolderOption } from '../../core/folders'
 import { normalizeText } from '../../core/text'
 import type { BmLink } from '../../core/types'
-import LinkList from '../components/LinkList'
+import SelectableList from '../components/SelectableList'
 import type { ViewMode } from '../viewMode'
 
 interface Props {
@@ -11,9 +11,13 @@ interface Props {
   subfolders: FolderNode[]
   mode: ViewMode
   onOpenFolder: (id: string) => void
+  folderOptions: FolderOption[]
+  busy: boolean
+  onMove: (ids: string[], folderId: string) => void | Promise<void>
+  onTrash: (ids: string[]) => void | Promise<void>
 }
 
-export default function FolderView({ title, links, subfolders, mode, onOpenFolder }: Props) {
+export default function FolderView({ title, links, subfolders, mode, onOpenFolder, folderOptions, busy, onMove, onTrash }: Props) {
   const [query, setQuery] = useState('')
   const q = normalizeText(query)
   const filtered = useMemo(
@@ -34,7 +38,7 @@ export default function FolderView({ title, links, subfolders, mode, onOpenFolde
           ))}
         </div>
       )}
-      <LinkList key={`${q}|${mode}`} links={filtered} mode={mode} />
+      <SelectableList key={`${q}|${mode}`} links={filtered} mode={mode} folderOptions={folderOptions} busy={busy} onMove={onMove} onTrash={onTrash} />
     </section>
   )
 }

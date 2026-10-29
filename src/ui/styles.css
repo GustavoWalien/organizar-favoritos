@@ -92,3 +92,27 @@ dd { margin: 0; font-weight: 600; }
 .compact li { padding: 3px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .compact a { color: var(--text); text-decoration: none; }
 .compact a:hover { text-decoration: underline; }
+
+/* ---- seleção, arrastar e diálogo ---- */
+.rows.selectable .row { grid-template-columns: 22px 22px minmax(0, 1fr) 220px 120px; }
+.row.selected, .card.selected { background: var(--raised); }
+.handle { color: var(--text-tertiary); cursor: grab; user-select: none; text-align: center; }
+.row[draggable='true']:active, .card[draggable='true']:active { opacity: .7; }
+.card-controls { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.compact li { display: flex; gap: 8px; align-items: center; }
+.compact li.selected { background: var(--raised); border-radius: 6px; }
+input[type='checkbox'] { width: 16px; height: 16px; accent-color: var(--primary); margin: 0; }
+
+.tree-row.drop { background: var(--raised); outline: 1.5px dashed var(--link); outline-offset: -2px; border-radius: 8px; }
+.selection-bar { display: flex; align-items: center; gap: 8px; background: var(--raised); border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px; margin-bottom: 10px; }
+button.primary { background: var(--primary); color: var(--primary-text); border-color: transparent; font-weight: 600; }
+button.primary:hover:not(:disabled) { background: var(--primary); filter: brightness(1.1); }
+button.danger { color: var(--danger-text); }
+
+.backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .55); display: flex; align-items: flex-start; justify-content: center; padding-top: 12vh; z-index: 100; }
+.dialog { width: min(520px, 92vw); background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, .5); padding: 14px; display: grid; gap: 10px; }
+.dialog-head { font-weight: 600; }
+.dialog-list { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow-y: auto; display: grid; gap: 2px; }
+.dialog-list button { width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: 7px 10px; }
+.dialog-list button.active { background: var(--raised); }
+.dialog-empty { padding: 8px 10px; }

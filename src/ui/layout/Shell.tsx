@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { buildFolderTree, directLinks, findFolderNode, folderPath, sidebarFolders, uncategorizedLinks } from '../../core/folders'
+import { buildFolderTree, directLinks, findFolderNode, folderOptions, folderPath, sidebarFolders, uncategorizedLinks } from '../../core/folders'
 import { findTrash } from '../../core/cleanup'
 import type { View } from '../../core/route'
-import { flattenLinks } from '../../core/tree'
+import { flattenLinks, otherBookmarksId } from '../../core/tree'
 import Toast from '../components/Toast'
 import { useLibrary } from '../state/useLibrary'
 import BackupsTab from '../BackupsTab'
@@ -11,7 +11,7 @@ import OverviewTab from '../OverviewTab'
 import FolderView from '../views/FolderView'
 import TrashView from '../views/TrashView'
 import { loadViewMode, saveViewMode, type ViewMode } from '../viewMode'
-import Sidebar from './Sidebar'
+import Sidebar, { type DropTarget } from './Sidebar'
 import Topbar from './Topbar'
 
 export default function Shell() {
@@ -23,8 +23,15 @@ export default function Shell() {
   if (!tree) return <p className="loading">Lendo favoritos…</p>
 
   const folders = sidebarFolders(tree)
+  const options = folderOptions(tree)
   const trash = findTrash(tree)
   const changeMode = (m: ViewMode) => { setMode(m); saveViewMode(m) }
+
+  const dropLinks = (ids: string[], target: DropTarget) => {
+    if (target.kind === 'folder') void lib.move(ids, target.id)
+    else if (target.kind === 'uncategorized') void lib.move(ids, otherBookmarksId(tree))
+    else void lib.trash(ids)
+  }
 
   const newFolder = () => {
     const name = window.prompt('Nome da nova pasta')
@@ -44,12 +51,12 @@ export default function Shell() {
   if (view.name === 'folder') {
     const node = findFolderNode(buildFolderTree(tree), view.id)
     content = (
-      <FolderView key={view.id} title={breadcrumb.at(-1) ?? ''} links={directLinks(tree, view.id)} subfolders={node?.children ?? []} mode={mode} onOpenFolder={(id) => setView({ name: 'folder', id })} />
+      <FolderView key={view.id} title={breadcrumb.at(-1) ?? ''} links={directLinks(tree, view.id)} subfolders={node?.children ?? []} mode={mode} onOpenFolder={(id) => setView({ name: 'folder', id })} folderOptions={options} busy={lib.busy} onMove={lib.move} onTrash={lib.trash} />
     )
   } else if (view.name === 'uncategorized') {
-    content = <FolderView key="uncategorized" title="Sem categoria" links={uncategorizedLinks(tree)} subfolders={[]} mode={mode} onOpenFolder={() => {}} />
+    content = <FolderView key="uncategorized" title="Sem categoria" links={uncategorizedLinks(tree)} subfolders={[]} mode={mode} onOpenFolder={() => {}} folderOptions={options} busy={lib.busy} onMove={lib.move} onTrash={lib.trash} />
   } else if (view.name === 'trash') {
-    content = <TrashView tree={tree} mode={mode} busy={lib.busy} onChanged={lib.reload} onNotify={lib.notify} />
+    content = <TrashView tree={tree} mode={mode} busy={lib.busy} onChanged={lib.reload} onNotify={lib.notify} folderOptions={options} onMove={lib.move} />
   } else if (view.name === 'cleanup') {
     content = <CleanupTab />
   } else if (view.name === 'backups') {
@@ -67,6 +74,7 @@ export default function Shell() {
         trashCount={trash ? flattenLinks([trash]).length : 0}
         onNavigate={setView}
         onNewFolder={newFolder}
+        onDropLinks={dropLinks}
       />
       <div className="main">
         <Topbar breadcrumb={breadcrumb} showViewMode={listView} mode={mode} onMode={changeMode} />

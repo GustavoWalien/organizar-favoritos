@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { chromeBookmarksApi } from '../../chrome/bookmarksApi'
 import { describeMove, moveLinks, planCreateFolder } from '../../core/moves'
 import { BackupFailedError, runPlan, undoLast } from '../../core/plan'
+import { prepareCleanup } from '../cleanupActions'
 import type { BmNode, JournalEntry } from '../../core/types'
 import { lastEntry } from '../../storage/journal'
 
@@ -46,6 +47,30 @@ export function useLibrary() {
     }
   }, [busy, reload])
 
+  const trash = useCallback(async (ids: string[]) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const { plan, moves, blocked } = await prepareCleanup(chromeBookmarksApi, ids, 'Mover para a Lixeira')
+      if (blocked) {
+        notify(blocked)
+        return
+      }
+      if (moves === 0) {
+        notify('Nada para mover: os favoritos já estão na Lixeira ou mudaram')
+        return
+      }
+      const r = await runPlan(plan, chromeBookmarksApi, Date.now(), undefined, { shareBackup: true })
+      await reload()
+      const moved = moves - r.failed.length
+      notify(`${moved} ${moved === 1 ? 'favorito movido' : 'favoritos movidos'} para a Lixeira`, moved > 0)
+    } catch (e) {
+      notify(errorText(e))
+    } finally {
+      setBusy(false)
+    }
+  }, [busy, reload])
+
   const createFolder = useCallback(async (title: string, parentId?: string) => {
     if (busy) return
     setBusy(true)
@@ -79,5 +104,5 @@ export function useLibrary() {
     }
   }, [busy, reload])
 
-  return { tree, reload, move, createFolder, undo, lastInfo, toast, dismissToast: () => setToast(null), notify, busy }
+  return { tree, reload, move, trash, createFolder, undo, lastInfo, toast, dismissToast: () => setToast(null), notify, busy }
 }

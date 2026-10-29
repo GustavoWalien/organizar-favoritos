@@ -3,7 +3,8 @@ import { findTrash } from '../../core/cleanup'
 import { BackupFailedError, runPlan } from '../../core/plan'
 import { flattenLinks } from '../../core/tree'
 import type { BmNode } from '../../core/types'
-import LinkList from '../components/LinkList'
+import type { FolderOption } from '../../core/folders'
+import SelectableList from '../components/SelectableList'
 import { preparePurge } from '../cleanupActions'
 import type { ViewMode } from '../viewMode'
 
@@ -13,9 +14,11 @@ interface Props {
   busy: boolean
   onChanged: () => Promise<unknown>
   onNotify: (message: string) => void
+  folderOptions: FolderOption[]
+  onMove: (ids: string[], folderId: string) => void | Promise<void>
 }
 
-export default function TrashView({ tree, mode, busy, onChanged, onNotify }: Props) {
+export default function TrashView({ tree, mode, busy, onChanged, onNotify, folderOptions, onMove }: Props) {
   const trash = findTrash(tree)
   const links = trash ? flattenLinks([trash]) : []
 
@@ -42,8 +45,8 @@ export default function TrashView({ tree, mode, busy, onChanged, onNotify }: Pro
         <h2>Lixeira <small>{links.length} {links.length === 1 ? 'favorito' : 'favoritos'}</small></h2>
         {trash && <button onClick={purge} disabled={busy}>Esvaziar a Lixeira…</button>}
       </div>
-      <p className="muted">O que a limpeza descarta fica aqui até você esvaziar. Para recuperar, use o Desfazer ou a aba Backups.</p>
-      <LinkList links={links} mode={mode} />
+      <p className="muted">O que a limpeza descarta fica aqui até você esvaziar. Para recuperar, selecione e use "Mover para…", ou o Desfazer.</p>
+      <SelectableList links={links} mode={mode} folderOptions={folderOptions} busy={busy} onMove={onMove} />
     </section>
   )
 }

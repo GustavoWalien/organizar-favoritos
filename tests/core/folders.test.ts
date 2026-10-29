@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { TRASH_TITLE } from '../../src/core/cleanup'
-import { buildFolderTree, directLinks, findFolderNode, folderPath, sidebarFolders, uncategorizedLinks } from '../../src/core/folders'
+import { buildFolderTree, directLinks, findFolderNode, folderOptions, folderPath, sidebarFolders, uncategorizedLinks } from '../../src/core/folders'
 import type { BmFolder, BmLink, BmNode } from '../../src/core/types'
 
 const lnk = (id: string, parentId: string): BmLink => ({ kind: 'link', id, parentId, title: `L${id}`, url: `https://${id}.com/`, dateAdded: 1 })
@@ -72,5 +72,22 @@ describe('folders', () => {
   it('findFolderNode acha uma pasta da árvore de contagens em qualquer nível', () => {
     expect(findFolderNode(buildFolderTree(tree()), '11')).toMatchObject({ title: 'Ferramentas', count: 2 })
     expect(findFolderNode(buildFolderTree(tree()), '999')).toBeUndefined()
+  })
+
+  it('folderOptions lista as pastas raiz e as subpastas com o caminho, sem a Lixeira', () => {
+    const opts = folderOptions(tree())
+    expect(opts.map((o) => o.label)).toEqual([
+      'Barra', 'Barra › Trabalho', 'Barra › Trabalho › Ferramentas', 'Barra › Estudos', 'Outros', 'Móveis',
+    ])
+    expect(opts.find((o) => o.label === 'Barra › Trabalho')?.id).toBe('10')
+  })
+
+  it('folderOptions com pastas de nome vazio ou repetido mantém ids distintos', () => {
+    const t = tree()
+    const barra = (t[0] as BmFolder).children[0] as BmFolder
+    barra.children.push(dir('30', '1', 'Docs'), dir('31', '1', 'Docs'), dir('32', '1', ''))
+    const ids = folderOptions(t).map((o) => o.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(folderOptions(t).find((o) => o.id === '32')?.label).toBe('Barra › (sem nome)')
   })
 })

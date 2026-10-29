@@ -67,3 +67,25 @@ export function findFolderNode(nodes: FolderNode[], id: string): FolderNode | un
     if (found) return found
   }
 }
+
+export interface FolderOption {
+  id: string
+  /** "Barra › Trabalho › Ferramentas" */
+  label: string
+}
+
+/** Todas as pastas onde um favorito pode ser colocado (raiz e subpastas), sem a Lixeira, com o caminho. */
+export function folderOptions(root: BmNode[]): FolderOption[] {
+  const trashId = findTrash(root)?.id
+  const out: FolderOption[] = []
+  const walk = (folders: BmFolder[], path: string[]) => {
+    for (const f of folders) {
+      if (f.id === trashId) continue
+      const here = [...path, f.title || '(sem nome)']
+      out.push({ id: f.id, label: here.join(' › ') })
+      walk(f.children.filter(isFolder), here)
+    }
+  }
+  walk(rootFolders(root), [])
+  return out
+}
