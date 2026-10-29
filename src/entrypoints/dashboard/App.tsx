@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import OverviewTab from '../../ui/OverviewTab'
 
 const TABS = ['Visão geral', 'Limpeza', 'Backups'] as const
 type Tab = (typeof TABS)[number]
@@ -17,7 +18,7 @@ export default function App() {
         ))}
       </nav>
       <section role="tabpanel">
-        <p>{tab}: em construção.</p>
+        {tab === 'Visão geral' ? <OverviewTab /> : <p>{tab}: em construção.</p>}
       </section>
     </main>
   )
