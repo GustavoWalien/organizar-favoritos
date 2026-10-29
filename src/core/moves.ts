@@ -1,5 +1,5 @@
 import { runPlan, newPlanId } from './plan'
-import { findNode } from './tree'
+import { findNode, otherBookmarksId } from './tree'
 import type { BmNode, BookmarksApi, Operation, Plan } from './types'
 
 /** Plano para mover links para uma pasta. Ignora o que não é link, repetidos, inexistentes e o que já está no destino. */
@@ -53,4 +53,14 @@ export function describeMove(r: MoveResult): string {
   }
   const base = `${r.moved} ${r.moved === 1 ? 'favorito movido' : 'favoritos movidos'} para "${r.targetTitle}"`
   return notMoved > 0 ? `${base} (${notMoved} não ${notMoved === 1 ? 'foi movido' : 'foram movidos'})` : base
+}
+
+/** Plano para criar uma pasta. Sem pai válido (ou com um link como pai), cria em "Outros favoritos". */
+export function planCreateFolder(root: BmNode[], parentId: string | undefined, title: string): Plan {
+  const name = title.trim()
+  const id = newPlanId('folder')
+  if (!name) return { id, label: 'Nova pasta', operations: [] }
+  const parent = parentId ? findNode(root, parentId) : undefined
+  const target = parent && parent.kind === 'folder' ? parent.id : otherBookmarksId(root)
+  return { id, label: `Nova pasta "${name}"`, operations: [{ op: 'create-folder', tempId: 'nova', parentId: target, title: name }] }
 }

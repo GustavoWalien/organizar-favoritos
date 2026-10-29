@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { chromeBookmarksApi } from '../../chrome/bookmarksApi'
-import { describeMove, moveLinks } from '../../core/moves'
-import { BackupFailedError, undoLast } from '../../core/plan'
+import { describeMove, moveLinks, planCreateFolder } from '../../core/moves'
+import { BackupFailedError, runPlan, undoLast } from '../../core/plan'
 import type { BmNode, JournalEntry } from '../../core/types'
 import { lastEntry } from '../../storage/journal'
 
@@ -46,6 +46,25 @@ export function useLibrary() {
     }
   }, [busy, reload])
 
+  const createFolder = useCallback(async (title: string, parentId?: string) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const plan = planCreateFolder(await chromeBookmarksApi.getTree(), parentId, title)
+      if (plan.operations.length === 0) {
+        notify('Dê um nome à pasta')
+        return
+      }
+      const r = await runPlan(plan, chromeBookmarksApi, Date.now(), undefined, { shareBackup: true })
+      await reload()
+      notify(r.failed.length ? `Não foi possível criar a pasta: ${r.failed[0]?.error}` : `Pasta "${title.trim()}" criada`, r.applied > 0)
+    } catch (e) {
+      notify(errorText(e))
+    } finally {
+      setBusy(false)
+    }
+  }, [busy, reload])
+
   const undo = useCallback(async () => {
     if (busy) return
     setBusy(true)
@@ -60,5 +79,5 @@ export function useLibrary() {
     }
   }, [busy, reload])
 
-  return { tree, reload, move, undo, lastInfo, toast, dismissToast: () => setToast(null), notify, busy }
+  return { tree, reload, move, createFolder, undo, lastInfo, toast, dismissToast: () => setToast(null), notify, busy }
 }

@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { IDBFactory } from 'fake-indexeddb'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { TRASH_TITLE } from '../../src/core/cleanup'
-import { describeMove, moveLinks, planMoveLinks } from '../../src/core/moves'
+import { describeMove, moveLinks, planCreateFolder, planMoveLinks } from '../../src/core/moves'
 import { undoLast } from '../../src/core/plan'
 import type { BmFolder, BmNode } from '../../src/core/types'
 import { makeFakeApi } from '../fixtures/fakeApi'
@@ -103,5 +103,23 @@ describe('describeMove', () => {
   })
   it('quando nada mudou, explica', () => {
     expect(describeMove({ moved: 0, skipped: 2, failed: 0, targetTitle: 'Lazer' })).toBe('Nada para mover: os favoritos já estão em "Lazer" ou mudaram')
+  })
+})
+
+describe('planCreateFolder', () => {
+  it('cria a pasta dentro da pasta pedida', () => {
+    const p = planCreateFolder(tree(), '5', 'Docs')
+    expect(p.operations).toEqual([{ op: 'create-folder', tempId: 'nova', parentId: '5', title: 'Docs' }])
+  })
+  it('sem pai (ou pai inexistente) cria em Outros favoritos', () => {
+    expect(planCreateFolder(tree(), undefined, 'Docs').operations[0]).toMatchObject({ parentId: '2' })
+    expect(planCreateFolder(tree(), '999', 'Docs').operations[0]).toMatchObject({ parentId: '2' })
+  })
+  it('o pai não pode ser um link: cai em Outros favoritos', () => {
+    expect(planCreateFolder(tree(), '10', 'Docs').operations[0]).toMatchObject({ parentId: '2' })
+  })
+  it('nome em branco não gera operações e o nome é aparado', () => {
+    expect(planCreateFolder(tree(), '5', '   ').operations).toEqual([])
+    expect(planCreateFolder(tree(), '5', '  Docs  ').operations[0]).toMatchObject({ title: 'Docs' })
   })
 })

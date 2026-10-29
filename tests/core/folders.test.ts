@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { TRASH_TITLE } from '../../src/core/cleanup'
-import { buildFolderTree, directLinks, sidebarFolders, uncategorizedLinks } from '../../src/core/folders'
+import { buildFolderTree, directLinks, findFolderNode, folderPath, sidebarFolders, uncategorizedLinks } from '../../src/core/folders'
 import type { BmFolder, BmLink, BmNode } from '../../src/core/types'
 
 const lnk = (id: string, parentId: string): BmLink => ({ kind: 'link', id, parentId, title: `L${id}`, url: `https://${id}.com/`, dateAdded: 1 })
@@ -61,5 +61,16 @@ describe('folders', () => {
     expect(buildFolderTree([])).toEqual([])
     expect(sidebarFolders([dir('0', '', '')])).toEqual([])
     expect(uncategorizedLinks([])).toEqual([])
+  })
+
+  it('folderPath devolve os títulos da pasta raiz até a pasta', () => {
+    expect(folderPath(tree(), '11')).toEqual(['Barra', 'Trabalho', 'Ferramentas'])
+    expect(folderPath(tree(), '1')).toEqual(['Barra'])
+    expect(folderPath(tree(), '999')).toEqual([])
+  })
+
+  it('findFolderNode acha uma pasta da árvore de contagens em qualquer nível', () => {
+    expect(findFolderNode(buildFolderTree(tree()), '11')).toMatchObject({ title: 'Ferramentas', count: 2 })
+    expect(findFolderNode(buildFolderTree(tree()), '999')).toBeUndefined()
   })
 })
