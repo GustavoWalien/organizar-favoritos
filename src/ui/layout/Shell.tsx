@@ -7,7 +7,7 @@ import Toast from '../components/Toast'
 import { useLibrary } from '../state/useLibrary'
 import BackupsTab from '../BackupsTab'
 import CleanupTab from '../CleanupTab'
-import OverviewTab from '../OverviewTab'
+import OverviewView from '../views/OverviewView'
 import FolderView from '../views/FolderView'
 import TrashView from '../views/TrashView'
 import { loadViewMode, saveViewMode, type ViewMode } from '../viewMode'
@@ -45,7 +45,7 @@ export default function Shell() {
     : view.name === 'cleanup' ? ['Limpeza']
     : view.name === 'backups' ? ['Backups']
     : ['Visão geral']
-  const listView = view.name === 'folder' || view.name === 'uncategorized' || view.name === 'trash'
+  const listView = view.name === 'folder' || view.name === 'uncategorized' || view.name === 'trash' || view.name === 'overview'
 
   let content
   if (view.name === 'folder') {
@@ -62,7 +62,7 @@ export default function Shell() {
   } else if (view.name === 'backups') {
     content = <BackupsTab />
   } else {
-    content = <OverviewTab />
+    content = <OverviewView tree={tree} mode={mode} folderOptions={options} busy={lib.busy} onNavigate={setView} onMove={lib.move} onTrash={lib.trash} />
   }
 
   return (

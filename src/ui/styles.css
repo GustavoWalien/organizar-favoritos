@@ -116,3 +116,14 @@ button.danger { color: var(--danger-text); }
 .dialog-list button { width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: 7px 10px; }
 .dialog-list button.active { background: var(--raised); }
 .dialog-empty { padding: 8px 10px; }
+
+/* ---- visão geral ---- */
+.view-title { margin: 0 0 14px; font-size: 20px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 26px; }
+.tile { display: grid; gap: 2px; text-align: left; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; color: var(--text); }
+button.tile:hover { background: var(--raised); }
+.tile-value { font-size: 26px; font-weight: 700; line-height: 1.1; }
+.tile-label { color: var(--text-secondary); }
+.tile.warn { background: var(--warn-bg); } .tile.warn .tile-value, .tile.warn .tile-label { color: var(--warn-text); }
+.tile.danger { background: var(--danger-bg); } .tile.danger .tile-value, .tile.danger .tile-label { color: var(--danger-text); }
+.tile.ok { background: var(--ok-bg); } .tile.ok .tile-value, .tile.ok .tile-label { color: var(--ok-text); }
