@@ -13,6 +13,8 @@ export interface BookmarkEvents {
   onImportEnded: ChangeEvent
 }
 
+const EVENT_NAMES: (keyof BookmarkEvents)[] = ['onCreated', 'onRemoved', 'onChanged', 'onMoved', 'onChildrenReordered', 'onImportEnded']
+
 /**
  * Avisa quando os favoritos mudam (por este painel, pelo Chrome, por sincronização ou por outra aba).
  * Várias mudanças seguidas viram um aviso só, `delayMs` depois da última. Devolve a função que para de escutar.
@@ -23,7 +25,8 @@ export function watchBookmarks(events: BookmarkEvents, onChange: () => void, del
     clearTimeout(timer)
     timer = setTimeout(onChange, delayMs)
   }
-  const all = Object.values(events) as ChangeEvent[]
+  // `chrome.bookmarks` mistura eventos com métodos (get, getTree…): só os eventos de mudança entram.
+  const all = EVENT_NAMES.map((name) => events[name]).filter((e): e is ChangeEvent => typeof e?.addListener === 'function')
   for (const e of all) e.addListener(handler)
   return () => {
     clearTimeout(timer)

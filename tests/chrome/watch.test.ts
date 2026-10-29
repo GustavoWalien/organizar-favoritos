@@ -62,4 +62,17 @@ describe('watchBookmarks', () => {
     expect(onChange).not.toHaveBeenCalled()
     expect(total()).toBe(0)
   })
+
+  it('ignora as outras propriedades do objeto real (get, getTree…), que não são eventos', () => {
+    const { events } = fakeEvents()
+    // chrome.bookmarks de verdade mistura eventos com métodos e outros valores
+    const realistic = { ...events, get: () => {}, getTree: () => {}, create: () => {}, MAX_WRITE_OPERATIONS_PER_HOUR: 1000 }
+    expect(() => watchBookmarks(realistic, () => {}, 10)).not.toThrow()
+  })
+
+  it('não quebra se algum evento não existir nesta versão do Chrome', () => {
+    const { events } = fakeEvents()
+    const incomplete = { ...events, onImportEnded: undefined } as unknown as BookmarkEvents
+    expect(() => watchBookmarks(incomplete, () => {}, 10)()).not.toThrow()
+  })
 })
