@@ -3,11 +3,16 @@ import { openDB, type IDBPDatabase } from 'idb'
 export const DB_NAME = 'organizar-favoritos'
 
 export function openDb(): Promise<IDBPDatabase> {
-  return openDB(DB_NAME, 1, {
-    upgrade(db) {
-      const snapshots = db.createObjectStore('snapshots', { keyPath: 'id' })
-      snapshots.createIndex('createdAt', 'createdAt')
-      db.createObjectStore('journal', { keyPath: 'planId' })
+  return openDB(DB_NAME, 2, {
+    upgrade(db, oldVersion) {
+      if (oldVersion < 1) {
+        const snapshots = db.createObjectStore('snapshots', { keyPath: 'id' })
+        snapshots.createIndex('createdAt', 'createdAt')
+        db.createObjectStore('journal', { keyPath: 'planId' })
+      }
+      if (oldVersion < 2) {
+        db.createObjectStore('flags', { keyPath: 'id' })
+      }
     },
   })
 }
