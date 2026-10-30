@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FolderOption } from '../../core/folders'
 import type { MarksMap } from '../../core/marks'
-import { organizeRows, type OrganizeFilters } from '../../core/organize'
+import { organizeRows, ownMarkedIds, type OrganizeFilters } from '../../core/organize'
 import { hasMore, pageOf } from '../../core/paging'
 import type { BmNode } from '../../core/types'
 import MovePicker from '../components/MovePicker'
@@ -15,30 +15,32 @@ interface Props {
   busy: boolean
   onMove: (ids: string[], folderId: string) => void | Promise<void>
   onSetProtected: (ids: string[], value: boolean) => void | Promise<void>
+  onNotify: (message: string) => void
 }
 
 const NO_FILTERS: OrganizeFilters = { query: '', onlyLoose: false, onlyProtected: false, onlySuggested: false }
 const APROVADO: Record<string, string> = { '': '—', sim: 'Aprovado', nao: 'Recusado' }
 
 /** Tabela de revisão: todos os favoritos com pasta atual, marca "Não mexer" e sugestão, com filtros. */
-export default function OrganizeView({ tree, marks, folderOptions, busy, onMove, onSetProtected }: Props) {
+export default function OrganizeView({ tree, marks, folderOptions, busy, onMove, onSetProtected, onNotify }: Props) {
   const [filters, setFilters] = useState<OrganizeFilters>(NO_FILTERS)
   const [pages, setPages] = useState(1)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [picking, setPicking] = useState(false)
 
   const rows = useMemo(() => organizeRows(tree, marks, filters), [tree, marks, filters])
-  const shown = pageOf(rows, pages)
+  const shown = useMemo(() => pageOf(rows, pages), [rows, pages])
+  const shownIds = useMemo(() => new Set(shown.map((r) => r.id)), [shown])
   const allShownSelected = shown.length > 0 && shown.every((r) => selected.has(r.id))
 
-  // Itens que saíram da tabela (movidos, filtrados, apagados) deixam de estar selecionados.
-  const present = useMemo(() => new Set(rows.map((r) => r.id)), [rows])
+  // A seleção só guarda o que está na tela: itens que saíram da página visível (movidos, filtrados,
+  // apagados, ou além das páginas mostradas) deixam de estar selecionados.
   useEffect(() => {
     setSelected((s) => {
-      const next = new Set([...s].filter((id) => present.has(id)))
+      const next = new Set([...s].filter((id) => shownIds.has(id)))
       return next.size === s.size ? s : next
     })
-  }, [present])
+  }, [shownIds])
 
   const change = (patch: Partial<OrganizeFilters>) => { setFilters((f) => ({ ...f, ...patch })); setPages(1) }
   const toggle = (id: string) => setSelected((s) => {
@@ -46,8 +48,13 @@ export default function OrganizeView({ tree, marks, folderOptions, busy, onMove,
     if (!next.delete(id)) next.add(id)
     return next
   })
-  const toggleAll = () => setSelected((s) => (allShownSelected ? new Set() : new Set([...s, ...shown.map((r) => r.id)])))
+  const toggleAll = () => setSelected((s) => (allShownSelected ? new Set([...s].filter((id) => !shownIds.has(id))) : new Set([...s, ...shownIds])))
   const ids = [...selected]
+  const unprotect = () => {
+    const own = ownMarkedIds(ids, marks)
+    if (own.length === 0) onNotify('Nenhum selecionado tem a marca "não mexer" própria; os protegidos por uma pasta são liberados pela pasta')
+    else void onSetProtected(own, false)
+  }
   const filtering = JSON.stringify(filters) !== JSON.stringify(NO_FILTERS)
 
   return (
@@ -73,7 +80,7 @@ export default function OrganizeView({ tree, marks, folderOptions, busy, onMove,
           busy={busy}
           onMoveTo={() => setPicking(true)}
           onProtect={() => { void onSetProtected(ids, true) }}
-          onUnprotect={() => { void onSetProtected(ids, false) }}
+          onUnprotect={unprotect}
           onClear={() => setSelected(new Set())}
         />
       )}
@@ -100,11 +107,13 @@ export default function OrganizeView({ tree, marks, folderOptions, busy, onMove,
                 return (
                   <tr key={r.id} className={selected.has(r.id) ? 'selected' : undefined}>
                     <td className="col-check"><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} aria-label={`Selecionar ${title}`} /></td>
-                    <td className="cell-title">
-                      <a href={r.url} target="_blank" rel="noreferrer" className="row-title">{title}</a>
-                      <span className="muted">{domainOf(r.url)}</span>
+                    <td>
+                      <div className="cell-title">
+                        <a href={r.url} target="_blank" rel="noreferrer" className="row-title">{title}</a>
+                        <span className="muted">{domainOf(r.url)}</span>
+                      </div>
                     </td>
-                    <td className="muted">{r.folderLabel || '—'}{r.loose && <small className="tag"> · solto</small>}</td>
+                    <td className="muted">{r.folderLabel || '—'}{r.loose && <small className="tag-loose"> · solto</small>}</td>
                     <td className="col-lock">
                       {inherited ? (
                         <span title={`Protegido pela pasta ${r.inheritedFrom}`}>

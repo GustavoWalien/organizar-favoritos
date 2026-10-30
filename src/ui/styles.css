@@ -157,4 +157,4 @@ kbd { margin-left: auto; font: inherit; font-size: 11px; border: 1px solid var(-
 .organize-table .col-lock { text-align: center; white-space: nowrap; }
 .cell-title { display: grid; gap: 1px; min-width: 180px; max-width: 360px; }
 .cell-title > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tag { color: var(--text-tertiary); }
+.tag-loose { color: var(--text-tertiary); }

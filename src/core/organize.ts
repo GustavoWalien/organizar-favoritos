@@ -10,6 +10,14 @@ export function lockedFolderIds(marks: MarksMap): Set<string> {
   return out
 }
 
+/**
+ * Dos `ids`, os que têm a marca "não mexer" própria. "Liberar" só muda esses: um item protegido só
+ * pela pasta continuaria protegido, e contá-lo como liberado enganaria o aviso.
+ */
+export function ownMarkedIds(ids: string[], marks: MarksMap): string[] {
+  return ids.filter((id) => marks.get(id)?.naoMexer === true)
+}
+
 /** Aviso de "marcado como não mexer" / "liberado", com singular e plural. */
 export function protectMessage(count: number, value: boolean, what: 'favorito' | 'pasta' = 'favorito'): string {
   const one = count === 1

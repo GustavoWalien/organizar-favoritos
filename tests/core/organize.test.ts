@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lockedFolderIds, organizeRows, protectMessage, type OrganizeFilters } from '../../src/core/organize'
+import { lockedFolderIds, organizeRows, ownMarkedIds, protectMessage, type OrganizeFilters } from '../../src/core/organize'
 import { TRASH_TITLE } from '../../src/core/cleanup'
 import type { BmNode } from '../../src/core/types'
 import { sampleTree } from '../fixtures/sampleTree'
@@ -15,6 +15,17 @@ describe('lockedFolderIds', () => {
 
   it('mapa vazio dá conjunto vazio', () => {
     expect(lockedFolderIds(new Map()).size).toBe(0)
+  })
+})
+
+describe('ownMarkedIds', () => {
+  it('fica só com os ids que têm a marca "não mexer" própria, na ordem pedida', () => {
+    const m = marks({ id: 'a', naoMexer: true }, { id: 'b', sugestao: 'X' }, { id: 'd', naoMexer: true })
+    expect(ownMarkedIds(['d', 'b', 'c', 'a'], m)).toEqual(['d', 'a'])
+  })
+
+  it('protegido só pela pasta (sem marca própria) fica de fora', () => {
+    expect(ownMarkedIds(['10'], marks({ id: '5', naoMexer: true }))).toEqual([])
   })
 })
 
