@@ -2,10 +2,10 @@ import 'fake-indexeddb/auto'
 import { IDBFactory } from 'fake-indexeddb'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { BACKUP_WINDOW_MS } from '../../src/core/backupPolicy'
-import { BackupFailedError, runPlan, undoIfLatest, undoLast } from '../../src/core/plan'
+import { BackupFailedError, runPlan, undoIfLatest, undoLast, type RunStore, type UndoStore } from '../../src/core/plan'
 import { listSnapshots } from '../../src/storage/snapshots'
 import type { BmFolder, JournalEntry, Plan, Snapshot } from '../../src/core/types'
-import { makeFakeApi } from '../fixtures/fakeApi'
+import { type FakeMarks, makeFakeApi, makeFakeMarks } from '../fixtures/fakeApi'
 import { sampleTree } from '../fixtures/sampleTree'
 
 beforeEach(() => {
@@ -195,6 +195,143 @@ describe('runPlan com backup compartilhado', () => {
     await undoLast(api)
     expect((await api.get('11'))?.parentId).toBe('5')
     expect((await api.get('10'))?.parentId).toBe('2')
+  })
+})
+
+describe('runPlan e undoLast com marcas', () => {
+  /** Diário em memória + marcas falsas, para runPlan e undoLast. */
+  const stores = (marks: FakeMarks) => {
+    const journal: JournalEntry[] = []
+    const run: RunStore = {
+      saveSnapshot: async () => {},
+      saveEntry: async (e) => { journal.push(e) },
+      marks,
+    }
+    const undo: UndoStore = {
+      lastEntry: async () => journal.at(-1),
+      deleteEntry: async (id) => {
+        const i = journal.findIndex((e) => e.planId === id)
+        if (i >= 0) journal.splice(i, 1)
+      },
+      marks,
+    }
+    return { journal, run, undo }
+  }
+
+  const withMarks = (operations: Plan['operations'], marks: Plan['marks']): Plan => ({ id: 'pm', label: 'Marcas', operations, marks })
+
+  it('grava a marca no id real do link criado e devolve o idMap', async () => {
+    const api = makeFakeApi(sampleTree)
+    const marks = makeFakeMarks()
+    const { run } = stores(marks)
+    const r = await runPlan(withMarks(
+      [{ op: 'create-link', tempId: 'l1', parentId: '2', title: 'Novo', url: 'https://novo.example/' }],
+      [{ target: 'l1', patch: { naoMexer: true } }],
+    ), api, 1, run)
+    const realId = r.idMap.l1!
+    expect(realId).toBeDefined()
+    expect(realId).not.toBe('l1')
+    expect((await api.get(realId))?.title).toBe('Novo')
+    expect(marks.data.get(realId)).toEqual({ id: realId, naoMexer: true })
+    expect(marks.data.has('l1')).toBe(false)
+  })
+
+  it('idMap também traz as pastas criadas', async () => {
+    const api = makeFakeApi(sampleTree)
+    const r = await runPlan(plan([{ op: 'create-folder', tempId: 't1', parentId: '2', title: 'Nova' }]), api, 1, stores(makeFakeMarks()).run)
+    expect((await api.get(r.idMap.t1!))?.title).toBe('Nova')
+  })
+
+  it('marca em id existente mescla com a marca anterior (patchMark)', async () => {
+    const api = makeFakeApi(sampleTree)
+    const marks = makeFakeMarks([{ id: '10', naoMexer: true }])
+    await runPlan(withMarks([], [{ target: '10', patch: { sugestao: 'X' } }]), api, 1, stores(marks).run)
+    expect(marks.data.get('10')).toEqual({ id: '10', naoMexer: true, sugestao: 'X' })
+  })
+
+  it('marksBefore guarda o estado anterior (null para o que não existia) e o desfazer restaura', async () => {
+    const api = makeFakeApi(sampleTree)
+    const marks = makeFakeMarks([{ id: '10', naoMexer: true }])
+    const { run, undo } = stores(marks)
+    const before = await api.getTree()
+    const r = await runPlan(withMarks(
+      [{ op: 'create-link', tempId: 'l1', parentId: '2', title: 'Novo', url: 'https://novo.example/' }],
+      [{ target: 'l1', patch: { naoMexer: true } }, { target: '10', patch: { sugestao: 'X' } }],
+    ), api, 1, run)
+    const realId = r.idMap.l1!
+    expect(r.entry.marksBefore).toEqual([
+      { id: realId, prev: null },
+      { id: '10', prev: { id: '10', naoMexer: true } },
+    ])
+
+    expect(await undoLast(api, undo)).toEqual({ undone: 3, skipped: 0, relocated: 0 })
+    expect(await api.get(realId)).toBeUndefined()
+    expect(await api.getTree()).toEqual(before)
+    expect(marks.data.has(realId)).toBe(false)
+    expect(marks.data.get('10')).toEqual({ id: '10', naoMexer: true })
+    expect(await undoLast(api, undo)).toBeNull()
+  })
+
+  it('patch que esvazia a marca a remove, e o desfazer a devolve', async () => {
+    const api = makeFakeApi(sampleTree)
+    const marks = makeFakeMarks([{ id: '10', naoMexer: true }])
+    const { run, undo } = stores(marks)
+    await runPlan(withMarks([], [{ target: '10', patch: { naoMexer: false } }]), api, 1, run)
+    expect(marks.data.has('10')).toBe(false)
+    await undoLast(api, undo)
+    expect(marks.data.get('10')).toEqual({ id: '10', naoMexer: true })
+  })
+
+  it('plano sem marcas não toca o MarksStore, nem no desfazer', async () => {
+    const api = makeFakeApi(sampleTree)
+    const marks = makeFakeMarks([{ id: '10', naoMexer: true }])
+    const { run, undo } = stores(marks)
+    const r = await runPlan(plan([{ op: 'move', id: '11', toParentId: '2' }]), api, 1, run)
+    expect(r.entry.marksBefore).toBeUndefined()
+    await undoLast(api, undo)
+    expect(marks.calls).toEqual([])
+  })
+
+  it('plano só de marcas (sem operações) ainda vai para o diário e pode ser desfeito', async () => {
+    const api = makeFakeApi(sampleTree)
+    const marks = makeFakeMarks()
+    const { journal, run, undo } = stores(marks)
+    await runPlan(withMarks([], [{ target: '20', patch: { naoMexer: true } }]), api, 1, run)
+    expect(journal).toHaveLength(1)
+    expect(marks.data.get('20')).toEqual({ id: '20', naoMexer: true })
+    expect(await undoLast(api, undo)).toEqual({ undone: 1, skipped: 0, relocated: 0 })
+    expect(marks.data.has('20')).toBe(false)
+    expect(api.calls).toEqual([])
+  })
+
+  it('se criar o link falha, a marca ligada a ele é ignorada sem erro', async () => {
+    const api = makeFakeApi(sampleTree)
+    const marks = makeFakeMarks()
+    const { journal, run } = stores(marks)
+    const r = await runPlan(withMarks(
+      [{ op: 'create-link', tempId: 'l1', parentId: '999', title: 'Novo', url: 'https://novo.example/' }],
+      [{ target: 'l1', patch: { naoMexer: true } }],
+    ), api, 1, run)
+    expect(r.failed).toHaveLength(1)
+    expect(r.idMap.l1).toBeUndefined()
+    expect(marks.data.size).toBe(0)
+    expect(r.marksError).toBeUndefined()
+    expect(journal).toHaveLength(0)
+  })
+
+  it('se gravar as marcas falha, as operações ainda vão para o diário e o erro volta no resultado', async () => {
+    const api = makeFakeApi(sampleTree)
+    const marks = makeFakeMarks()
+    marks.put = async () => { throw new Error('disco cheio') }
+    const { journal, run, undo } = stores(marks)
+    const r = await runPlan(withMarks(
+      [{ op: 'move', id: '10', toParentId: '2' }],
+      [{ target: '10', patch: { naoMexer: true } }],
+    ), api, 1, run)
+    expect(r.marksError).toContain('disco cheio')
+    expect(journal).toHaveLength(1)
+    await undoLast(api, undo)
+    expect((await api.get('10'))?.parentId).toBe('5')
   })
 })
 

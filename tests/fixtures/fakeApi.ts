@@ -1,4 +1,41 @@
+import type { ItemMark } from '../../src/core/marks'
 import type { BmFolder, BmNode, BookmarksApi } from '../../src/core/types'
+import type { MarksStore } from '../../src/storage/flags'
+
+export interface FakeMarks extends MarksStore {
+  data: Map<string, ItemMark>
+  /** Chamadas ao store, na ordem (`all`, `get`, `put`, `remove`). */
+  calls: string[]
+}
+
+/** `MarksStore` em memória. */
+export function makeFakeMarks(initial: ItemMark[] = []): FakeMarks {
+  const data = new Map(initial.map((m) => [m.id, structuredClone(m)]))
+  const calls: string[] = []
+  return {
+    data,
+    calls,
+    async all() {
+      calls.push('all')
+      return [...data.values()].map((m) => structuredClone(m))
+    },
+    async get(ids) {
+      calls.push(`get ${ids.join(',')}`)
+      return ids.map((id) => {
+        const m = data.get(id)
+        return m ? structuredClone(m) : undefined
+      })
+    },
+    async put(marks) {
+      calls.push(`put ${marks.map((m) => m.id).join(',')}`)
+      for (const m of marks) data.set(m.id, structuredClone(m))
+    },
+    async remove(ids) {
+      calls.push(`remove ${ids.join(',')}`)
+      for (const id of ids) data.delete(id)
+    },
+  }
+}
 
 export interface FakeApi extends BookmarksApi {
   /** Chamadas que mudam favoritos, na ordem. */

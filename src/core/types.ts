@@ -1,3 +1,5 @@
+import type { ItemMark } from './marks'
+
 export interface BmLink {
   kind: 'link'
   id: string
@@ -51,15 +53,24 @@ export interface Snapshot {
 export type Operation =
   /** `parentId` pode ser o `tempId` de uma pasta criada antes no mesmo plano. */
   | { op: 'create-folder'; tempId: string; parentId: string; title: string }
-  | { op: 'create-link'; parentId: string; title: string; url: string }
+  /** `tempId` (opcional) permite que uma `PlanMark` do mesmo plano aponte para o link novo. */
+  | { op: 'create-link'; tempId?: string; parentId: string; title: string; url: string }
   | { op: 'move'; id: string; toParentId: string; toIndex?: number }
   /** Só usado para esvaziar a Lixeira; não tem inverso. */
   | { op: 'remove'; id: string }
+
+/** Mudança de marca dentro de um plano; `target` é um id real ou um `tempId` do próprio plano. */
+export interface PlanMark {
+  target: string
+  patch: Partial<Omit<ItemMark, 'id'>>
+}
 
 export interface Plan {
   id: string
   label: string
   operations: Operation[]
+  /** Gravadas depois das operações, já com os ids reais dos itens criados. */
+  marks?: PlanMark[]
 }
 
 export interface JournalEntry {
@@ -69,4 +80,6 @@ export interface JournalEntry {
   snapshotId: string
   /** Em ordem de aplicação; o desfazer percorre de trás para frente. */
   inverse: Operation[]
+  /** Estado das marcas antes do plano (`null` = não havia marca); o desfazer o restaura. */
+  marksBefore?: { id: string; prev: ItemMark | null }[]
 }
