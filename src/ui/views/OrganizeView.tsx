@@ -90,8 +90,14 @@ export default function OrganizeView({ tree, marks, folderOptions, busy, onMove,
     if (!importing) return
     const r = await applyImport(chromeBookmarksApi, importing.prep, chosen, Date.now())
     setImporting(null)
-    if (r.ran) await onChanged()
+    // O aviso (com o Desfazer) sai antes de recarregar, para não se perder se a recarga falhar.
     onNotify(describeImport(r), r.planId !== undefined, r.planId)
+    if (!r.ran) return
+    try {
+      await onChanged()
+    } catch (err) {
+      console.error('Falha ao recarregar depois da importação', err)
+    }
   }
 
   return (
