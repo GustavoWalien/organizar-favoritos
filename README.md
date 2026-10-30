@@ -13,11 +13,11 @@ Projeto pessoal, feito para resolver um problema real: centenas de favoritos que
 | 0. Base | Esqueleto WXT + React + TS, leitura dos favoritos | Pronto |
 | 1. Backup | Snapshots, exportar JSON/HTML, restaurar | Pronto |
 | 2. Limpeza | Sem uso, duplicados, links quebrados, Lixeira, desfazer | Pronto |
-| 3. Organização | Regras locais e categorias manuais | Planejado |
+| 3. Organização | Marca "não mexer", vista Organizar e CSV da estrutura | Pronto (falta verificar na interface) |
 | 4. IA | Sugestão de pastas (Anthropic e compatível com OpenAI) | Planejado |
 | 5. Acabamento | Capturas de tela, CI, release | Planejado |
 
-Os marcos 0 a 2 têm testes automatizados da lógica (112 testes). A interface ainda precisa de uma rodada de verificação manual no Chrome; o checklist está em [`docs/decisions/0000-stack.md`](docs/decisions/0000-stack.md).
+Os marcos 0 a 3 têm testes automatizados da lógica (355 testes). A interface ainda precisa de uma rodada de verificação manual no Chrome; os checklists estão em [`docs/decisions/0000-stack.md`](docs/decisions/0000-stack.md) e [`docs/decisions/0002-marcas-e-csv.md`](docs/decisions/0002-marcas-e-csv.md).
 
 ## O que ela faz
 
@@ -27,6 +27,11 @@ Os marcos 0 a 2 têm testes automatizados da lógica (112 testes). A interface a
 - **Links quebrados:** testa os endereços com concorrência limitada e três resultados: `ok`, `quebrado` (só 404 ou 410) e `incerto` (timeout, bloqueio, 401/403/429, 5xx). Itens só "incertos" nunca vêm marcados.
 - **Pastas vazias.**
 - Tudo vai para uma revisão em lista, com filtro por motivo, seleção em massa e "abrir link" antes de decidir.
+
+**Organização**
+- **Não mexer:** marca favoritos e pastas que devem ficar onde estão. Pasta marcada protege tudo o que está dentro dela (a caixa dos itens herdados aparece marcada e travada). A marca vive na extensão, não no Chrome, e vai junto nos backups. Ela só protege contra mudanças automáticas: você ainda pode mover o item à mão.
+- **Vista Organizar:** tabela com todos os favoritos, pasta atual e a caixa "Não mexer", com filtros (só soltos, só marcados, por pasta, busca sem acento) e marcação em massa. As pastas marcadas aparecem com cadeado na árvore lateral.
+- **Exportar e importar a estrutura em CSV:** o CSV leva pastas, favoritos e marcas, e serve para levar a árvore a outro navegador ou conferir numa planilha. A importação mostra uma **prévia** (criados, movidos, marcas alteradas, linhas ignoradas) e deixa desmarcar o que não quer. Ela só cria e move, nunca remove, faz um backup próprio antes e tem **Desfazer**. Para abrir no Google Planilhas: **Arquivo → Importar → Upload**.
 
 **Segurança**
 - **Backup antes de cada mudança.** Se o backup falhar, nada é alterado. Guardam-se os últimos 20 no IndexedDB, e dá para fazer um backup manual a qualquer momento.
@@ -94,12 +99,13 @@ Se o Chrome roda no Windows e o código no WSL, use o caminho `\\wsl.localhost\<
 - **"Incerto" em vez de "quebrado":** as extensões de limpeza existentes são criticadas por falsos "inalcançáveis". Aqui só 404/410 contam como quebrado.
 - **Sem service worker:** o teste de links roda na página do painel, porque o Chrome pode encerrar o service worker no meio de uma varredura longa.
 - **ID fixo da extensão:** o manifesto tem uma `key` pública, para os backups não se perderem se a pasta do build mudar de lugar.
+- **Importar só cria e move:** um CSV nunca apaga nem renomeia o que o navegador já tem.
 - A pesquisa de soluções existentes e o roadmap completo estão em [`PLANO.md`](PLANO.md).
 
 ## Roadmap
 
-1. **Organização:** regras locais (domínio, palavras no título) e categorias criadas à mão.
-2. **IA:** a IA propõe a árvore de pastas e você aprova por pasta e por item. Dois adaptadores: Anthropic e compatível com OpenAI (OpenAI, Gemini, Groq, OpenRouter, Ollama). A chave fica só no navegador.
+1. **Organização (feito):** marca "não mexer", vista em tabela e CSV da estrutura. Regras locais (domínio, palavras no título) podem vir depois.
+2. **IA (próximo):** a IA propõe a árvore de pastas e você aprova por pasta e por item. Dois adaptadores: Anthropic e compatível com OpenAI (OpenAI, Gemini, Groq, OpenRouter, Ollama). A chave fica só no navegador.
 3. **Acabamento:** capturas de tela, CI e release.
 
 ## Licença

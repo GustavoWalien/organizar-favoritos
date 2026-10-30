@@ -137,7 +137,7 @@ A lógica em `core/` não depende do Chrome, para ser testada com Vitest.
 | 0. Base | WXT + React + TS rodando no Chrome; lê a árvore; confirma `dateLastUsed`; chamada de teste ao Anthropic | A extensão carrega e lista os favoritos |
 | 1. Backup | Snapshot, exportar JSON/HTML, restaurar | Backup e restauração funcionam com a sua árvore real |
 | 2. Limpeza | Sem uso, duplicados, quebrados, revisão, Lixeira, desfazer | Uma limpeza real é feita e desfeita sem perda |
-| 3. Organização manual | Regras locais, categorias manuais, mover com plano | Reorganiza um grupo de links à mão |
+| 3. Organização manual | Regras locais, categorias manuais, mover com plano | Reorganiza um grupo de links à mão. **Entregue** como marca "não mexer", vista Organizar e CSV da estrutura (ver `docs/decisions/0002-marcas-e-csv.md`); regras locais ficam para depois |
 | 4. IA | Adaptadores, proposta em árvore, revisão | Uma proposta é gerada e aplicada com os dois provedores |
 | 5. Portfólio | README com capturas, CI, release `.zip` | Um recém-chegado instala e entende em 5 minutos |
 
