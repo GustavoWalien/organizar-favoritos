@@ -143,3 +143,18 @@ kbd { margin-left: auto; font: inherit; font-size: 11px; border: 1px solid var(-
 .palette-hint { padding: 8px 16px; border-top: 1px solid var(--border); color: var(--text-tertiary); font-size: 12px; }
 
 .badge { background: var(--warn-bg); color: var(--warn-text); border-radius: 9px; padding: 0 7px; font-size: 11px; font-weight: 600; align-self: center; }
+
+/* ---- vista Organizar ---- */
+.organize-filters input[type='search'] { min-width: 240px; flex: 1; }
+.organize-filters label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+.table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; }
+.organize-table { width: 100%; border-collapse: collapse; }
+.organize-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-tertiary); font-weight: 400; padding: 9px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.organize-table td { padding: 8px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.organize-table tr:last-child td { border-bottom: 0; }
+.organize-table tr.selected { background: var(--raised); }
+.organize-table .col-check { width: 22px; padding-right: 0; }
+.organize-table .col-lock { text-align: center; white-space: nowrap; }
+.cell-title { display: grid; gap: 1px; min-width: 180px; max-width: 360px; }
+.cell-title > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag { color: var(--text-tertiary); }

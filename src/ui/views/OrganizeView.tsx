@@ -1,0 +1,140 @@
+import { useEffect, useMemo, useState } from 'react'
+import type { FolderOption } from '../../core/folders'
+import type { MarksMap } from '../../core/marks'
+import { organizeRows, type OrganizeFilters } from '../../core/organize'
+import { hasMore, pageOf } from '../../core/paging'
+import type { BmNode } from '../../core/types'
+import MovePicker from '../components/MovePicker'
+import SelectionBar from '../components/SelectionBar'
+import { domainOf } from '../format'
+
+interface Props {
+  tree: BmNode[]
+  marks: MarksMap
+  folderOptions: FolderOption[]
+  busy: boolean
+  onMove: (ids: string[], folderId: string) => void | Promise<void>
+  onSetProtected: (ids: string[], value: boolean) => void | Promise<void>
+}
+
+const NO_FILTERS: OrganizeFilters = { query: '', onlyLoose: false, onlyProtected: false, onlySuggested: false }
+const APROVADO: Record<string, string> = { '': '—', sim: 'Aprovado', nao: 'Recusado' }
+
+/** Tabela de revisão: todos os favoritos com pasta atual, marca "Não mexer" e sugestão, com filtros. */
+export default function OrganizeView({ tree, marks, folderOptions, busy, onMove, onSetProtected }: Props) {
+  const [filters, setFilters] = useState<OrganizeFilters>(NO_FILTERS)
+  const [pages, setPages] = useState(1)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [picking, setPicking] = useState(false)
+
+  const rows = useMemo(() => organizeRows(tree, marks, filters), [tree, marks, filters])
+  const shown = pageOf(rows, pages)
+  const allShownSelected = shown.length > 0 && shown.every((r) => selected.has(r.id))
+
+  // Itens que saíram da tabela (movidos, filtrados, apagados) deixam de estar selecionados.
+  const present = useMemo(() => new Set(rows.map((r) => r.id)), [rows])
+  useEffect(() => {
+    setSelected((s) => {
+      const next = new Set([...s].filter((id) => present.has(id)))
+      return next.size === s.size ? s : next
+    })
+  }, [present])
+
+  const change = (patch: Partial<OrganizeFilters>) => { setFilters((f) => ({ ...f, ...patch })); setPages(1) }
+  const toggle = (id: string) => setSelected((s) => {
+    const next = new Set(s)
+    if (!next.delete(id)) next.add(id)
+    return next
+  })
+  const toggleAll = () => setSelected((s) => (allShownSelected ? new Set() : new Set([...s, ...shown.map((r) => r.id)])))
+  const ids = [...selected]
+  const filtering = JSON.stringify(filters) !== JSON.stringify(NO_FILTERS)
+
+  return (
+    <section>
+      <div className="view-head">
+        <h2>Organizar <small>{rows.length} {rows.length === 1 ? 'favorito' : 'favoritos'}</small></h2>
+      </div>
+      <div className="toolbar organize-filters" role="search" aria-label="Filtros">
+        <input type="search" value={filters.query} onChange={(e) => change({ query: e.target.value })} placeholder="Buscar por título, endereço ou pasta…" aria-label="Buscar favoritos" />
+        <select value={filters.folderId ?? ''} onChange={(e) => change({ folderId: e.target.value || undefined })} aria-label="Pasta">
+          <option value="">Todas as pastas</option>
+          {folderOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+        </select>
+        <label><input type="checkbox" checked={filters.onlyLoose} onChange={(e) => change({ onlyLoose: e.target.checked })} /> Só soltos</label>
+        <label><input type="checkbox" checked={filters.onlyProtected} onChange={(e) => change({ onlyProtected: e.target.checked })} /> Só "Não mexer"</label>
+        <label><input type="checkbox" checked={filters.onlySuggested} onChange={(e) => change({ onlySuggested: e.target.checked })} /> Só com sugestão</label>
+        {filtering && <button onClick={() => { setFilters(NO_FILTERS); setPages(1) }}>Limpar filtros</button>}
+      </div>
+
+      {selected.size > 0 && (
+        <SelectionBar
+          count={selected.size}
+          busy={busy}
+          onMoveTo={() => setPicking(true)}
+          onProtect={() => { void onSetProtected(ids, true) }}
+          onUnprotect={() => { void onSetProtected(ids, false) }}
+          onClear={() => setSelected(new Set())}
+        />
+      )}
+
+      {rows.length === 0 ? (
+        <p className="empty">{filtering ? 'Nenhum favorito combina com os filtros.' : 'Nenhum favorito aqui.'}</p>
+      ) : (
+        <div className="table-wrap">
+          <table className="organize-table">
+            <thead>
+              <tr>
+                <th scope="col" className="col-check"><input type="checkbox" checked={allShownSelected} onChange={toggleAll} aria-label="Selecionar todos os itens visíveis" /></th>
+                <th scope="col">Favorito</th>
+                <th scope="col">Pasta atual</th>
+                <th scope="col" className="col-lock">Não mexer</th>
+                <th scope="col">Sugestão</th>
+                <th scope="col">Aprovado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((r) => {
+                const title = r.title || domainOf(r.url) || '(sem título)'
+                const inherited = !r.own && r.inheritedFrom !== undefined
+                return (
+                  <tr key={r.id} className={selected.has(r.id) ? 'selected' : undefined}>
+                    <td className="col-check"><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} aria-label={`Selecionar ${title}`} /></td>
+                    <td className="cell-title">
+                      <a href={r.url} target="_blank" rel="noreferrer" className="row-title">{title}</a>
+                      <span className="muted">{domainOf(r.url)}</span>
+                    </td>
+                    <td className="muted">{r.folderLabel || '—'}{r.loose && <small className="tag"> · solto</small>}</td>
+                    <td className="col-lock">
+                      {inherited ? (
+                        <span title={`Protegido pela pasta ${r.inheritedFrom}`}>
+                          <input type="checkbox" checked disabled aria-label={`Não mexer: ${title} (protegido pela pasta ${r.inheritedFrom})`} /> <span aria-hidden="true">🔒</span>
+                        </span>
+                      ) : (
+                        <input type="checkbox" checked={r.own} disabled={busy} onChange={() => { void onSetProtected([r.id], !r.own) }} aria-label={`Não mexer: ${title}`} />
+                      )}
+                    </td>
+                    <td>{r.sugestao || <span className="muted">—</span>}</td>
+                    <td className="muted">{APROVADO[r.aprovado]}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {hasMore(rows, pages) && (
+        <p><button onClick={() => setPages((p) => p + 1)}>Mostrar mais ({rows.length - shown.length} restantes)</button></p>
+      )}
+
+      {picking && (
+        <MovePicker
+          options={folderOptions}
+          count={selected.size}
+          onClose={() => setPicking(false)}
+          onPick={(folderId) => { setPicking(false); void onMove(ids, folderId); setSelected(new Set()) }}
+        />
+      )}
+    </section>
+  )
+}

@@ -2,7 +2,7 @@ import type { FolderOption } from './folders'
 import { normalizeText } from './text'
 import type { FlatLink } from './types'
 
-export type PaletteAction = 'backup' | 'analisar-sem-uso' | 'achar-duplicados' | 'testar-links' | 'ir-lixeira'
+export type PaletteAction = 'backup' | 'analisar-sem-uso' | 'achar-duplicados' | 'testar-links' | 'ir-lixeira' | 'abrir-organizar'
 
 export const PALETTE_ACTIONS: { id: PaletteAction; label: string }[] = [
   { id: 'backup', label: 'Fazer backup agora' },
@@ -10,6 +10,7 @@ export const PALETTE_ACTIONS: { id: PaletteAction; label: string }[] = [
   { id: 'achar-duplicados', label: 'Achar duplicados' },
   { id: 'testar-links', label: 'Testar links' },
   { id: 'ir-lixeira', label: 'Abrir a Lixeira' },
+  { id: 'abrir-organizar', label: 'Abrir Organizar' },
 ]
 
 export type PaletteItem =

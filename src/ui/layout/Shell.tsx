@@ -13,6 +13,7 @@ import { makeBackup } from '../backupActions'
 import { useLibrary } from '../state/useLibrary'
 import BackupsView from '../views/BackupsView'
 import CleanupView from '../views/CleanupView'
+import OrganizeView from '../views/OrganizeView'
 import OverviewView from '../views/OverviewView'
 import FolderView from '../views/FolderView'
 import TrashView from '../views/TrashView'
@@ -71,6 +72,7 @@ export default function Shell() {
     } else if (action === 'analisar-sem-uso') setView({ name: 'cleanup', start: 'sem-uso' })
     else if (action === 'achar-duplicados') setView({ name: 'cleanup', start: 'duplicado' })
     else if (action === 'testar-links') setView({ name: 'cleanup', start: 'quebrado' })
+    else if (action === 'abrir-organizar') setView({ name: 'organize' })
     else setView({ name: 'trash' })
   }
 
@@ -85,6 +87,7 @@ export default function Shell() {
     : view.name === 'trash' ? ['Lixeira']
     : view.name === 'cleanup' ? ['Limpeza']
     : view.name === 'backups' ? ['Backups']
+    : view.name === 'organize' ? ['Organizar']
     : ['Visão geral']
   const listView = view.name === 'folder' || view.name === 'uncategorized' || view.name === 'trash' || view.name === 'overview'
 
@@ -100,6 +103,8 @@ export default function Shell() {
     content = <TrashView tree={tree} mode={mode} busy={lib.busy} onChanged={lib.reload} onNotify={lib.notify} folderOptions={options} onMove={lib.move} />
   } else if (view.name === 'cleanup') {
     content = <CleanupView key={`cleanup-${view.start ?? ''}`} start={view.start} />
+  } else if (view.name === 'organize') {
+    content = <OrganizeView tree={tree} marks={lib.marks} folderOptions={options} busy={lib.busy} onMove={lib.move} onSetProtected={lib.setProtected} />
   } else if (view.name === 'backups') {
     content = <BackupsView />
   } else {

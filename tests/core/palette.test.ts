@@ -62,3 +62,10 @@ describe('searchPalette', () => {
     expect(searchPalette('x.com', [link('9', '', 'https://x.com/')], []).some((i) => i.kind === 'link')).toBe(true)
   })
 })
+
+describe('ação Abrir Organizar', () => {
+  it('aparece na lista e é achada pelo rótulo', () => {
+    expect(PALETTE_ACTIONS.some((a) => a.id === 'abrir-organizar')).toBe(true)
+    expect(searchPalette('organizar', [], []).some((i) => i.kind === 'action' && i.id === 'abrir-organizar')).toBe(true)
+  })
+})

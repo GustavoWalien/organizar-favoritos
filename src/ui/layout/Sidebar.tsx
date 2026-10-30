@@ -109,6 +109,7 @@ export default function Sidebar({ folders, view, uncategorizedCount, trashCount,
       <nav>
         {item('overview', '▦ Visão geral', { name: 'overview' })}
         {item('cleanup', '🧹 Limpeza', { name: 'cleanup' }, cleanupCount)}
+        {item('organize', '☰ Organizar', { name: 'organize' })}
         {item('backups', '💾 Backups', { name: 'backups' })}
       </nav>
       <div className="section-title">

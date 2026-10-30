@@ -4,5 +4,6 @@ export type View =
   | { name: 'folder'; id: string }
   | { name: 'uncategorized' }
   | { name: 'cleanup'; start?: 'sem-uso' | 'duplicado' | 'quebrado' }
+  | { name: 'organize' }
   | { name: 'backups' }
   | { name: 'trash' }
