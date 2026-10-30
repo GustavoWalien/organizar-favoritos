@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { TRASH_TITLE } from '../../src/core/cleanup'
+import { parseCsv, toCsv } from '../../src/core/csv'
 import { assembleImportPlan, type ImportPreview, planImport } from '../../src/core/importPlan'
 import type { ItemMark, MarksMap } from '../../src/core/marks'
 import { runPlan, type RunStore } from '../../src/core/plan'
@@ -237,6 +239,91 @@ describe('planImport', () => {
     expect(plan.operations).toEqual([{ op: 'create-folder', tempId: expect.any(String), parentId: '1', title: 'Vazia' }])
     for (const op of allOps(preview)) expect(op.op).not.toBe('remove')
     expect(plan.operations.some((o) => o.op === 'move' && ['1', '2', '3'].includes(o.id))).toBe(false)
+  })
+
+  it('Lixeira: linha do CSV dentro dela é ignorada e nunca vira mover para a Lixeira do navegador', () => {
+    const tree = browser(
+      [folder('5', '1', 'Work', [link('10', '5', 'Vivo', 'https://vivo.example/')])],
+      [folder('30', '2', TRASH_TITLE, [])],
+    )
+    const rows = [
+      row({ raiz: 'outros', tipo: 'pasta', path: ['Outros favoritos', TRASH_TITLE], title: TRASH_TITLE, url: '' }),
+      row({ raiz: 'outros', path: ['Outros favoritos', TRASH_TITLE], title: 'Vivo', url: 'https://vivo.example/', naoMexer: true }),
+      row({ raiz: 'outros', tipo: 'pasta', path: ['Outros favoritos', TRASH_TITLE, 'Sub'], title: 'Sub', url: '' }),
+      row({ raiz: 'outros', path: ['Outros favoritos', TRASH_TITLE, 'Sub'], title: 'Novo', url: 'https://novo.example/' }),
+    ]
+    const preview = planImport(tree, new Map(), rows)
+    expect(preview.items).toEqual([])
+    expect(preview.blocked).toEqual([])
+    expect(preview.ignored).toEqual([
+      { label: TRASH_TITLE, reason: 'Lixeira da extensão: não é importada' },
+      { label: 'Vivo', reason: 'Lixeira da extensão: não é importada' },
+      { label: 'Sub', reason: 'Lixeira da extensão: não é importada' },
+      { label: 'Novo', reason: 'Lixeira da extensão: não é importada' },
+    ])
+    expect(allOps(preview).some((o) => o.op === 'move')).toBe(false)
+  })
+
+  it('Lixeira: exportar uma árvore com Lixeira e importar de volta não traz nada dela', () => {
+    const tree = browser([], [link('20', '2', 'Fica', 'https://fica.example/'), folder('30', '2', TRASH_TITLE, [link('31', '30', 'Lixo', 'https://lixo.example/')])])
+    const rows = csvRows(tree, marksOf({ id: '31', naoMexer: true }))
+    expect(rows.some((r) => r.path.includes(TRASH_TITLE) || r.title === TRASH_TITLE)).toBe(false)
+    expect(planImport(browser(), new Map(), rows).items.map((i) => i.label)).toEqual(['Fica'])
+  })
+
+  it('marca numa linha de raiz do Chrome é ignorada, com aviso só quando a linha pede algo', () => {
+    const csv = [
+      'tipo,caminho,titulo,url,ordem,nao_mexer,sugestao,aprovado,raiz',
+      'pasta,"Barra de favoritos",Barra de favoritos,,0,sim,,,barra',
+      'pasta,"Outros favoritos",Outros favoritos,,1,,Algo,,outros',
+      'pasta,"Favoritos para dispositivos móveis",Favoritos para dispositivos móveis,,2,,,,mobile',
+    ].join('\r\n')
+    const preview = planImport(browser(), new Map(), parseStructure(csv).rows)
+    expect(preview.items).toEqual([])
+    expect(preview.ignored).toEqual([
+      { label: 'Barra de favoritos', reason: 'Marca em pasta raiz do Chrome ignorada' },
+      { label: 'Outros favoritos', reason: 'Marca em pasta raiz do Chrome ignorada' },
+    ])
+  })
+
+  it('ordem: CSV embaralhado na planilha volta à ordem original (criação e desempate dos duplicados)', async () => {
+    const source = browser([
+      folder('5', '1', 'F', [
+        link('10', '5', 'A', 'https://a.example/'),
+        link('11', '5', 'B', 'https://b.example/'),
+        link('12', '5', 'C', 'https://c.example/'),
+        link('13', '5', 'D1', 'https://d.example/'),
+        link('14', '5', 'D2', 'https://d.example/'),
+      ]),
+      link('15', '1', 'Solto', 'https://solto.example/'),
+    ])
+    const marks = marksOf({ id: '13', sugestao: 'um' }, { id: '14', sugestao: 'dois' })
+    const [header, ...data] = parseCsv(exportStructure(source, marks))
+    const shuffled = toCsv([header!, ...[...data].reverse()])
+    const rows = parseStructure(shuffled).rows
+    expect(rows.map((r) => r.title)).not.toEqual(csvRows(source, marks).map((r) => r.title))
+
+    // Navegador vazio: cria na ordem original e cada marca fica na sua cópia.
+    const preview = planImport(browser(), new Map(), rows)
+    const plan = assembleImportPlan(preview, allKeys(preview), browser(), 1)
+    const api = makeFakeApi(browser())
+    const store = makeFakeMarks()
+    const r = await runPlan(plan, api, 1, memStore(store))
+    expect(r.failed).toEqual([])
+    const top = (await api.getTree())[0] as BmFolder
+    expect(shape(top.children)).toEqual(shape((source[0] as BmFolder).children))
+    const f = (top.children[0] as BmFolder).children[0] as BmFolder
+    const byTitle = (t: string) => f.children.find((c) => c.title === t)?.id ?? ''
+    expect(store.data.get(byTitle('D1'))?.sugestao).toBe('um')
+    expect(store.data.get(byTitle('D2'))?.sugestao).toBe('dois')
+
+    // Navegador com os dois duplicados: cada marca vai para o seu link, e nada mais muda.
+    const p2 = planImport(source, new Map(), rows)
+    expect(p2.items.map((i) => [i.kind, i.marks])).toEqual([
+      ['marcar', [{ target: '13', patch: { sugestao: 'um' } }]],
+      ['marcar', [{ target: '14', patch: { sugestao: 'dois' } }]],
+    ])
+    expect(planImport(source, marks, rows)).toEqual({ items: [], blocked: [], ignored: [] })
   })
 
   it('pasta em vários níveis sem linhas dos ancestrais: needsFolders traz os ancestrais, pai antes do filho', () => {

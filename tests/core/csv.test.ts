@@ -23,7 +23,7 @@ describe('parseCsv', () => {
   })
 
   it('ignora o BOM no início', () => {
-    expect(parseCsv('﻿a,b\r\n1,2')).toEqual([['a', 'b'], ['1', '2']])
+    expect(parseCsv('\uFEFFa,b\r\n1,2')).toEqual([['a', 'b'], ['1', '2']])
   })
 
   it('aceita \\n simples como fim de linha', () => {
@@ -48,6 +48,6 @@ describe('parseCsv', () => {
 
   it('texto vazio dá nenhuma linha', () => {
     expect(parseCsv('')).toEqual([])
-    expect(parseCsv('﻿')).toEqual([])
+    expect(parseCsv('\uFEFF')).toEqual([])
   })
 })

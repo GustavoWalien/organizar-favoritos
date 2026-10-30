@@ -1,3 +1,4 @@
+import { findTrash } from './cleanup'
 import { parseCsv, toCsv } from './csv'
 import { rootToken, type MarksMap } from './marks'
 import type { BmNode } from './types'
@@ -92,8 +93,11 @@ export function unguardFormula(v: string): string {
 
 function collectRows(tree: BmNode[], marks: MarksMap): StructureRow[] {
   const rows: StructureRow[] = []
+  // A Lixeira da extensão não faz parte da estrutura: nem ela nem o que está dentro saem no CSV.
+  const trashId = findTrash(tree)?.id
 
   const visit = (n: BmNode, ordem: number, folderPath: string[], raiz: StructureRow['raiz']) => {
+    if (n.id === trashId) return
     const mark = marks.get(n.id)
     const aprovado: StructureRow['aprovado'] = mark?.aprovado ?? ''
     const common = {
@@ -124,7 +128,10 @@ function collectRows(tree: BmNode[], marks: MarksMap): StructureRow[] {
   return rows
 }
 
-/** Exporta a árvore (pré-ordem) e as marcas como CSV da estrutura, com cabeçalho e `\r\n`. */
+/**
+ * Exporta a árvore (pré-ordem) e as marcas como CSV da estrutura, com cabeçalho e `\r\n`. A Lixeira
+ * da extensão (`findTrash`) e tudo dentro dela ficam de fora.
+ */
 export function exportStructure(tree: BmNode[], marks: MarksMap): string {
   const body = collectRows(tree, marks).map((r) => [
     r.tipo,

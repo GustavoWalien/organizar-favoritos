@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { TRASH_TITLE } from '../../src/core/cleanup'
 import { parseCsv } from '../../src/core/csv'
 import type { MarksMap } from '../../src/core/marks'
 import {
@@ -96,6 +97,30 @@ describe('exportStructure', () => {
   it('sugestão que começa com = também é protegida', () => {
     const rows = rowsOf(sampleTree, new Map([['10', { id: '10', sugestao: '=x' }]]))
     expect(find(rows, 'link', 'MDN')?.[6]).toBe("'=x")
+  })
+
+  it('a Lixeira da extensão e tudo dentro dela ficam de fora', () => {
+    const tree: BmNode[] = [
+      {
+        kind: 'folder', id: '0', title: '', children: [
+          { kind: 'folder', id: '1', parentId: '0', title: 'Barra de favoritos', children: [] },
+          {
+            kind: 'folder', id: '2', parentId: '0', title: 'Outros favoritos', children: [
+              { kind: 'link', id: '20', parentId: '2', title: 'Fica', url: 'https://fica.example/', dateAdded: 0 },
+              {
+                kind: 'folder', id: '30', parentId: '2', title: TRASH_TITLE, children: [
+                  { kind: 'link', id: '31', parentId: '30', title: 'Lixo', url: 'https://lixo.example/', dateAdded: 0 },
+                  { kind: 'folder', id: '32', parentId: '30', title: 'Velha', children: [] },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ]
+    const rows = rowsOf(tree, new Map([['31', { id: '31', naoMexer: true }]]))
+    expect(rows.map((r) => r[2])).toEqual(['titulo', 'Barra de favoritos', 'Outros favoritos', 'Fica'])
+    expect(rows.some((r) => r[1]?.includes(TRASH_TITLE))).toBe(false)
   })
 })
 

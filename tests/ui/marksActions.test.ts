@@ -262,6 +262,11 @@ describe('describeImport', () => {
     )
   })
 
+  it('rodou mas nada deu certo: diz "Nada foi aplicado" e mantém a contagem de falhas', () => {
+    expect(describeImport({ ...base, failed: 3, firstError: 'x' })).toBe('Nada foi aplicado. 3 falharam (x)')
+    expect(describeImport({ ...base, failed: 1, skipped: 1 })).toBe('Nada foi aplicado. 1 falhou. 1 item mudou desde a prévia e ficou de fora')
+  })
+
   it('nada rodou', () => {
     expect(describeImport({ ...base, ran: false })).toBe('Nada selecionado para importar')
     expect(describeImport({ ...base, ran: false, skipped: 2 })).toBe('Nada aplicado: os 2 itens escolhidos mudaram no navegador desde a prévia')

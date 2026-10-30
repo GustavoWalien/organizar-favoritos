@@ -129,7 +129,7 @@ export function describeImport(r: ImportResult): string {
   }
   const done = r.applied > 0 || r.marks === 0 ? [plural(r.applied, 'item criado ou movido', 'itens criados ou movidos')] : []
   if (r.marks > 0) done.push(plural(r.marks, 'marca gravada', 'marcas gravadas'))
-  const parts = [`Importação aplicada: ${done.join(', ')}`]
+  const parts = [r.applied === 0 && r.marks === 0 ? 'Nada foi aplicado' : `Importação aplicada: ${done.join(', ')}`]
   if (r.failed > 0) parts.push(`${r.failed} ${r.failed === 1 ? 'falhou' : 'falharam'}${r.firstError ? ` (${r.firstError})` : ''}`)
   if (r.skipped > 0) parts.push(`${plural(r.skipped, 'item mudou', 'itens mudaram')} desde a prévia e ${r.skipped === 1 ? 'ficou' : 'ficaram'} de fora`)
   if (r.marksError !== undefined) parts.push(`As marcas não foram gravadas (${r.marksError}); Desfazer ainda reverte o resto`)

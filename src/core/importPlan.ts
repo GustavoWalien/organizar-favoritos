@@ -1,3 +1,4 @@
+import { TRASH_TITLE } from './cleanup'
 import { isProtectedEffective, type ItemMark, type MarksMap, rootToken } from './marks'
 import { decodePath, encodePath, type StructureRow } from './structureCsv'
 import { findNode, flattenLinks } from './tree'
@@ -113,12 +114,72 @@ function countBy<T>(list: T[], keyOf: (x: T) => string | null): Map<string, numb
   return m
 }
 
+/** Chaves das pastas que contêm a linha, da raiz até a pasta-mãe (para link, a própria pasta dele). */
+function containerChain(r: StructureRow): string[] {
+  const sub = r.path.slice(1)
+  const depth = r.tipo === 'pasta' ? sub.length : sub.length + 1
+  const chain: string[] = []
+  for (let i = 0; i < depth; i++) chain.push(folderKey(r.raiz, sub.slice(0, i)))
+  return chain
+}
+
+/**
+ * Põe as linhas na ordem da árvore, usando a coluna `ordem` dentro de cada pasta (empate: ordem do
+ * CSV). Assim, uma planilha reordenada pelo usuário (ex.: por título) ainda casa os duplicados e cria
+ * os itens novos na ordem original. Cada linha vira uma sequência de pares [ordem, posição no CSV],
+ * um por nível (a raiz conta como nível), terminando nela mesma; a pasta vem antes do seu conteúdo e
+ * a ordenação é estável.
+ *
+ * Cada pasta da cadeia é a linha `pasta` com aquele caminho que vem por último antes da linha (ou a
+ * primeira do CSV, se nenhuma vier antes): assim pastas irmãs de mesmo nome continuam separadas num
+ * CSV na ordem exportada. Pasta sem linha própria usa a `ordem` e a posição da primeira linha que a cita.
+ */
+function sortByOrdem(rows: StructureRow[]): StructureRow[] {
+  const ownKey = (r: StructureRow) => folderKey(r.raiz, r.path.slice(1))
+  const firstFolderRow = new Map<string, number>()
+  rows.forEach((r, i) => {
+    if (r.tipo === 'pasta' && !firstFolderRow.has(ownKey(r))) firstFolderRow.set(ownKey(r), i)
+  })
+  const latestFolderRow = new Map<string, number>()
+  const withoutRow = new Map<string, [number, number]>()
+
+  const keyed = rows.map((r, i) => {
+    const level = (k: string): [number, number] => {
+      const at = latestFolderRow.get(k) ?? firstFolderRow.get(k)
+      if (at !== undefined) return [rows[at]?.ordem ?? 0, at]
+      const v = withoutRow.get(k) ?? [r.ordem, i]
+      withoutRow.set(k, v)
+      return v
+    }
+    const k: [number, number][] = [...containerChain(r).map(level), [r.ordem, i]]
+    if (r.tipo === 'pasta') latestFolderRow.set(ownKey(r), i)
+    return { r, i, k }
+  })
+  keyed.sort((a, b) => {
+    const n = Math.min(a.k.length, b.k.length)
+    for (let j = 0; j < n; j++) {
+      const [ao, aa] = a.k[j] ?? [0, 0]
+      const [bo, ba] = b.k[j] ?? [0, 0]
+      if (ao !== bo) return ao - bo
+      if (aa !== ba) return aa - ba
+    }
+    return a.k.length - b.k.length || a.i - b.i
+  })
+  return keyed.map((x) => x.r)
+}
+
+const TRASH_IGNORED = 'Lixeira da extensão: não é importada'
+const ROOT_MARK_IGNORED = 'Marca em pasta raiz do Chrome ignorada'
+
 /**
  * Casa as linhas do CSV com a árvore e lista o que importar. Só cria e move: nunca remove nem
- * renomeia, e as raízes do Chrome nunca são criadas nem movidas. Pastas novas não viram operação
- * aqui: entram em `needsFolders`, e `assembleImportPlan` as cria.
+ * renomeia, e as raízes do Chrome nunca são criadas, movidas nem marcadas. Pastas novas não viram
+ * operação aqui: entram em `needsFolders`, e `assembleImportPlan` as cria. As linhas são postas antes
+ * na ordem da coluna `ordem` (ver `sortByOrdem`). Linhas dentro da Lixeira da extensão (em "Outros
+ * favoritos") são ignoradas: nada é criado nela nem movido para ela.
  */
-export function planImport(tree: BmNode[], marks: MarksMap, rows: StructureRow[]): ImportPreview {
+export function planImport(tree: BmNode[], marks: MarksMap, csvRows: StructureRow[]): ImportPreview {
+  const rows = sortByOrdem(csvRows)
   const idx = indexTree(tree)
   const browserLinks = flattenLinks(tree)
   const browserCount = countBy(browserLinks, (l) => normalizeUrl(l.url))
@@ -138,6 +199,10 @@ export function planImport(tree: BmNode[], marks: MarksMap, rows: StructureRow[]
 
   for (const r of rows) {
     const label = r.title || r.url || (r.path.at(-1) ?? '')
+    if (r.raiz === 'outros' && r.path[1] === TRASH_TITLE) {
+      ignored.push({ label, reason: TRASH_IGNORED })
+      continue
+    }
     const root = idx.roots.get(r.raiz)
     if (!root) {
       ignored.push({ label, reason: `A raiz "${r.raiz}" (${ROOT_NAMES[r.raiz]}) não existe neste navegador.` })
@@ -164,6 +229,11 @@ export function planImport(tree: BmNode[], marks: MarksMap, rows: StructureRow[]
       items.push({ key, kind: 'marcar', label, detail: describeMarks(patch), needsFolders: [], ops: [], marks: [{ target, patch }] })
 
     if (r.tipo === 'pasta') {
+      if (sub.length === 0) {
+        // A própria raiz do Chrome: nunca recebe marca (a extensão nunca mexe nas raízes).
+        if (r.naoMexer || r.sugestao || r.aprovado) ignored.push({ label, reason: ROOT_MARK_IGNORED })
+        continue
+      }
       const key = folderKey(r.raiz, sub)
       const n = folderRows.get(key) ?? 0
       folderRows.set(key, n + 1)

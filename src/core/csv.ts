@@ -32,7 +32,7 @@ type State = 'start' | 'unquoted' | 'quoted' | 'quoteInQuoted'
  * (com vírgula, `""` e quebras) e descarta linhas totalmente vazias (sem nenhum caractere).
  */
 export function parseCsv(text: string): string[][] {
-  const src = text.startsWith('﻿') ? text.slice(1) : text
+  const src = text.startsWith('\uFEFF') ? text.slice(1) : text
   const rows: string[][] = []
   let row: string[] = []
   let field = ''
