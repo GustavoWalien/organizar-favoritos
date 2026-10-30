@@ -285,7 +285,7 @@ export function assembleImportPlan(preview: ImportPreview, selectedKeys: Set<str
     marks.push(...item.marks)
   }
 
-  const plan: Plan = { id: `importar-${now}`, label: `Importar estrutura (${chosen.length} itens)`, operations }
+  const plan: Plan = { id: `importar-${now}`, label: `Importar estrutura (${chosen.length} ${chosen.length === 1 ? 'item' : 'itens'})`, operations }
   if (marks.length > 0) plan.marks = marks
   return plan
 }

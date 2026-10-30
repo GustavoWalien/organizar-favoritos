@@ -270,6 +270,7 @@ describe('assembleImportPlan', () => {
     const keys = new Set(preview.items.filter((i) => i.label !== 'L3').map((i) => i.key))
     const plan = assembleImportPlan(preview, keys, browser(), 1)
     expect(plan.label).toBe('Importar estrutura (2 itens)')
+    expect(assembleImportPlan(preview, new Set([preview.items[0]!.key]), browser(), 1).label).toBe('Importar estrutura (1 item)')
     const folders = plan.operations.filter((o) => o.op === 'create-folder')
     expect(folders.map((f) => f.op === 'create-folder' && f.title)).toEqual(['Nova'])
   })

@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { chromeBookmarksApi } from '../../chrome/bookmarksApi'
 import type { FolderOption } from '../../core/folders'
 import type { MarksMap } from '../../core/marks'
 import { organizeRows, ownMarkedIds, type OrganizeFilters } from '../../core/organize'
 import { hasMore, pageOf } from '../../core/paging'
 import type { BmNode } from '../../core/types'
+import ImportPreview from '../components/ImportPreview'
 import MovePicker from '../components/MovePicker'
 import SelectionBar from '../components/SelectionBar'
 import { domainOf } from '../format'
+import { applyImport, describeImport, exportStructureFile, importFileProblem, type ImportPreparation, previewImport } from '../marksActions'
 
 interface Props {
   tree: BmNode[]
@@ -15,18 +18,24 @@ interface Props {
   busy: boolean
   onMove: (ids: string[], folderId: string) => void | Promise<void>
   onSetProtected: (ids: string[], value: boolean) => void | Promise<void>
-  onNotify: (message: string) => void
+  /** Com `planId`, o aviso oferece "Desfazer" para esse plano. */
+  onNotify: (message: string, undoable?: boolean, planId?: string) => void
+  onChanged: () => Promise<unknown>
 }
 
 const NO_FILTERS: OrganizeFilters = { query: '', onlyLoose: false, onlyProtected: false, onlySuggested: false }
 const APROVADO: Record<string, string> = { '': '—', sim: 'Aprovado', nao: 'Recusado' }
 
 /** Tabela de revisão: todos os favoritos com pasta atual, marca "Não mexer" e sugestão, com filtros. */
-export default function OrganizeView({ tree, marks, folderOptions, busy, onMove, onSetProtected, onNotify }: Props) {
+export default function OrganizeView({ tree, marks, folderOptions, busy, onMove, onSetProtected, onNotify, onChanged }: Props) {
   const [filters, setFilters] = useState<OrganizeFilters>(NO_FILTERS)
   const [pages, setPages] = useState(1)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [picking, setPicking] = useState(false)
+  const [importing, setImporting] = useState<{ prep: ImportPreparation; fileName: string } | null>(null)
+  const [reading, setReading] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
+  const importButton = useRef<HTMLButtonElement>(null)
 
   const rows = useMemo(() => organizeRows(tree, marks, filters), [tree, marks, filters])
   const shown = useMemo(() => pageOf(rows, pages), [rows, pages])
@@ -57,10 +66,44 @@ export default function OrganizeView({ tree, marks, folderOptions, busy, onMove,
   }
   const filtering = JSON.stringify(filters) !== JSON.stringify(NO_FILTERS)
 
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // permite escolher o mesmo arquivo de novo
+    if (!file) return
+    const problem = importFileProblem(file)
+    if (problem) {
+      onNotify(problem)
+      return
+    }
+    setReading(true)
+    try {
+      const prep = await previewImport(chromeBookmarksApi, marks, await file.text())
+      setImporting({ prep, fileName: file.name })
+    } catch (err) {
+      onNotify(`Não foi possível ler o arquivo: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setReading(false)
+    }
+  }
+
+  const applyChosen = async (chosen: Set<string>) => {
+    if (!importing) return
+    const r = await applyImport(chromeBookmarksApi, importing.prep, chosen, Date.now())
+    setImporting(null)
+    if (r.ran) await onChanged()
+    onNotify(describeImport(r), r.planId !== undefined, r.planId)
+  }
+
   return (
     <section>
       <div className="view-head">
         <h2>Organizar <small>{rows.length} {rows.length === 1 ? 'favorito' : 'favoritos'}</small></h2>
+        <div className="view-actions">
+          <button onClick={() => exportStructureFile(tree, marks, Date.now())} aria-describedby="export-hint">Exportar CSV</button>
+          <small id="export-hint">No Google Planilhas: Arquivo → Importar → Upload</small>
+          <button ref={importButton} onClick={() => fileInput.current?.click()} disabled={busy || reading}>{reading ? 'Lendo…' : 'Importar CSV…'}</button>
+          <input ref={fileInput} type="file" accept=".csv,text/csv" hidden onChange={(e) => { void onFile(e) }} />
+        </div>
       </div>
       <div className="toolbar organize-filters" role="search" aria-label="Filtros">
         <input type="search" value={filters.query} onChange={(e) => change({ query: e.target.value })} placeholder="Buscar por título, endereço ou pasta…" aria-label="Buscar favoritos" />
@@ -134,6 +177,17 @@ export default function OrganizeView({ tree, marks, folderOptions, busy, onMove,
       )}
       {hasMore(rows, pages) && (
         <p><button onClick={() => setPages((p) => p + 1)}>Mostrar mais ({rows.length - shown.length} restantes)</button></p>
+      )}
+
+      {importing && (
+        <ImportPreview
+          prep={importing.prep}
+          fileName={importing.fileName}
+          busy={busy}
+          onApply={applyChosen}
+          onClose={() => setImporting(null)}
+          returnFocusTo={importButton}
+        />
       )}
 
       {picking && (

@@ -104,7 +104,7 @@ export default function Shell() {
   } else if (view.name === 'cleanup') {
     content = <CleanupView key={`cleanup-${view.start ?? ''}`} start={view.start} />
   } else if (view.name === 'organize') {
-    content = <OrganizeView tree={tree} marks={lib.marks} folderOptions={options} busy={lib.busy} onMove={lib.move} onSetProtected={lib.setProtected} onNotify={lib.notify} />
+    content = <OrganizeView tree={tree} marks={lib.marks} folderOptions={options} busy={lib.busy} onMove={lib.move} onSetProtected={lib.setProtected} onNotify={lib.notify} onChanged={lib.reload} />
   } else if (view.name === 'backups') {
     content = <BackupsView />
   } else {
