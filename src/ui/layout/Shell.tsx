@@ -3,6 +3,7 @@ import { buildFolderTree, directLinks, findFolderNode, folderOptions, folderPath
 import { findTrash } from '../../core/cleanup'
 import type { PaletteAction } from '../../core/palette'
 import type { View } from '../../core/route'
+import { lockedFolderIds } from '../../core/organize'
 import { computeOverview } from '../../core/overview'
 import { flattenLinks, otherBookmarksId } from '../../core/tree'
 import CommandPalette from '../components/CommandPalette'
@@ -29,6 +30,8 @@ export default function Shell() {
 
   const tree = lib.tree
   const allLinks = useMemo(() => (tree ? flattenLinks(tree, findTrash(tree)?.id) : []), [tree])
+
+  const locked = useMemo(() => lockedFolderIds(lib.marks), [lib.marks])
 
   const overview = useMemo(() => (tree ? computeOverview(tree, Date.now()) : null), [tree])
 
@@ -111,6 +114,8 @@ export default function Shell() {
         uncategorizedCount={uncategorizedLinks(tree).length}
         cleanupCount={overview ? overview.inactive + overview.duplicates : 0}
         trashCount={trash ? flattenLinks([trash]).length : 0}
+        lockedFolderIds={locked}
+        onToggleFolderLock={(id) => { void lib.setProtected([id], !locked.has(id), 'pasta') }}
         onNavigate={setView}
         onNewFolder={newFolder}
         onDropLinks={dropLinks}

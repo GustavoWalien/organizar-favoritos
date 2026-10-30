@@ -11,6 +11,8 @@ interface Props {
   uncategorizedCount: number
   trashCount: number
   cleanupCount: number
+  lockedFolderIds: Set<string>
+  onToggleFolderLock: (id: string) => void
   onNavigate: (view: View) => void
   onNewFolder: () => void
   onDropLinks: (ids: string[], target: DropTarget) => void
@@ -24,7 +26,7 @@ type DropProps = (key: string, target: DropTarget) => {
 
 const isCurrent = (view: View, name: View['name']) => view.name === name
 
-function TreeItem({ node, depth, view, expanded, toggle, onNavigate, dropKey, dropProps }: {
+function TreeItem({ node, depth, view, expanded, toggle, onNavigate, dropKey, dropProps, lockedFolderIds, onToggleFolderLock }: {
   node: FolderNode
   depth: number
   view: View
@@ -33,10 +35,14 @@ function TreeItem({ node, depth, view, expanded, toggle, onNavigate, dropKey, dr
   onNavigate: (view: View) => void
   dropKey: string | null
   dropProps: DropProps
+  lockedFolderIds: Set<string>
+  onToggleFolderLock: (id: string) => void
 }) {
   const open = expanded.has(node.id)
   const current = view.name === 'folder' && view.id === node.id
   const key = `folder:${node.id}`
+  const locked = lockedFolderIds.has(node.id)
+  const name = node.title || '(sem nome)'
   return (
     <>
       <div className={`tree-row${dropKey === key ? ' drop' : ''}`} style={{ paddingLeft: 6 + depth * 16 }} {...dropProps(key, { kind: 'folder', id: node.id })}>
@@ -48,18 +54,21 @@ function TreeItem({ node, depth, view, expanded, toggle, onNavigate, dropKey, dr
           <span className="chevron" aria-hidden="true" />
         )}
         <button className={`nav-item${current ? ' active' : ''}`} aria-current={current ? 'page' : undefined} onClick={() => onNavigate({ name: 'folder', id: node.id })}>
-          <span className="nav-label">📁 {node.title || '(sem nome)'}</span>
+          <span className="nav-label">📁 {name}{locked && <span className="lock" role="img" aria-label="Não mexer" title="Não mexer"> 🔒</span>}</span>
           <span className="count">{node.count}</span>
+        </button>
+        <button className={`lock-toggle${locked ? ' on' : ''}`} aria-label={locked ? `Liberar ${name}` : `Marcar ${name} como não mexer`} aria-pressed={locked} title={locked ? 'Liberar' : 'Não mexer'} onClick={() => onToggleFolderLock(node.id)}>
+          {locked ? '🔓' : '🔒'}
         </button>
       </div>
       {open && node.children.map((c) => (
-        <TreeItem key={c.id} node={c} depth={depth + 1} view={view} expanded={expanded} toggle={toggle} onNavigate={onNavigate} dropKey={dropKey} dropProps={dropProps} />
+        <TreeItem key={c.id} node={c} depth={depth + 1} view={view} expanded={expanded} toggle={toggle} onNavigate={onNavigate} dropKey={dropKey} dropProps={dropProps} lockedFolderIds={lockedFolderIds} onToggleFolderLock={onToggleFolderLock} />
       ))}
     </>
   )
 }
 
-export default function Sidebar({ folders, view, uncategorizedCount, trashCount, cleanupCount, onNavigate, onNewFolder, onDropLinks }: Props) {
+export default function Sidebar({ folders, view, uncategorizedCount, trashCount, cleanupCount, lockedFolderIds, onToggleFolderLock, onNavigate, onNewFolder, onDropLinks }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [dropKey, setDropKey] = useState<string | null>(null)
   const toggle = (id: string) => setExpanded((s) => {
@@ -108,7 +117,7 @@ export default function Sidebar({ folders, view, uncategorizedCount, trashCount,
       </div>
       <nav>
         {folders.map((f) => (
-          <TreeItem key={f.id} node={f} depth={0} view={view} expanded={expanded} toggle={toggle} onNavigate={onNavigate} dropKey={dropKey} dropProps={dropProps} />
+          <TreeItem key={f.id} node={f} depth={0} view={view} expanded={expanded} toggle={toggle} onNavigate={onNavigate} dropKey={dropKey} dropProps={dropProps} lockedFolderIds={lockedFolderIds} onToggleFolderLock={onToggleFolderLock} />
         ))}
         <div className={`tree-row${dropKey === 'uncategorized' ? ' drop' : ''}`} {...dropProps('uncategorized', { kind: 'uncategorized' })}>
           <button className={`nav-item${isCurrent(view, 'uncategorized') ? ' active' : ''}`} aria-current={isCurrent(view, 'uncategorized') ? 'page' : undefined} onClick={() => onNavigate({ name: 'uncategorized' })}>

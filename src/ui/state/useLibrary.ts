@@ -5,7 +5,10 @@ import { watchBookmarks } from '../../chrome/watch'
 import { describeMove, moveLinks, planCreateFolder } from '../../core/moves'
 import { BackupFailedError, runPlan, undoIfLatest, undoLast } from '../../core/plan'
 import { prepareCleanup } from '../cleanupActions'
+import { patchMark, type ItemMark, type MarksMap } from '../../core/marks'
+import { protectMessage } from '../../core/organize'
 import type { BmNode, JournalEntry } from '../../core/types'
+import { marksStore } from '../../storage/flags'
 import { lastEntry } from '../../storage/journal'
 
 export interface ToastState {
@@ -25,12 +28,14 @@ export function useLibrary() {
   const [lastInfo, setLastInfo] = useState<Pick<JournalEntry, 'label' | 'appliedAt'> | null>(null)
   const [toast, setToast] = useState<ToastState | null>(null)
   const [busy, setBusy] = useState(false)
+  const [marks, setMarks] = useState<MarksMap>(() => new Map())
 
   const reload = useCallback(async () => {
     const fresh = await chromeBookmarksApi.getTree()
     setTree(fresh)
     const last = await lastEntry()
     setLastInfo(last ? { label: last.label, appliedAt: last.appliedAt } : null)
+    setMarks(new Map((await marksStore.all()).map((m) => [m.id, m])))
     return fresh
   }, [])
   useEffect(() => { void reload() }, [reload])
@@ -118,5 +123,34 @@ export function useLibrary() {
     }
   }, [busy, reload])
 
-  return { tree, reload, move, trash, createFolder, undo, lastInfo, toast, dismissToast: () => setToast(null), notify, busy }
+  /** Marca ou libera "não mexer" nos itens, sem mexer nas outras marcas; avisa quantos mudaram. */
+  const setProtected = useCallback(async (ids: string[], value: boolean, what: 'favorito' | 'pasta' = 'favorito') => {
+    if (busy || ids.length === 0) return
+    setBusy(true)
+    try {
+      const prev = await marksStore.get(ids)
+      const toPut: ItemMark[] = []
+      const toRemove: string[] = []
+      ids.forEach((id, i) => {
+        const next = patchMark(prev[i], id, { naoMexer: value })
+        if (next) toPut.push(next)
+        else toRemove.push(id)
+      })
+      if (toPut.length > 0) await marksStore.put(toPut)
+      if (toRemove.length > 0) await marksStore.remove(toRemove)
+      setMarks((m) => {
+        const copy = new Map(m)
+        for (const mark of toPut) copy.set(mark.id, mark)
+        for (const id of toRemove) copy.delete(id)
+        return copy
+      })
+      notify(protectMessage(ids.length, value, what))
+    } catch (e) {
+      notify(errorText(e))
+    } finally {
+      setBusy(false)
+    }
+  }, [busy])
+
+  return { tree, marks, setProtected, reload, move, trash, createFolder, undo, lastInfo, toast, dismissToast: () => setToast(null), notify, busy }
 }

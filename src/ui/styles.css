@@ -66,6 +66,10 @@ dd { margin: 0; font-weight: 600; }
 .count { color: var(--text-tertiary); font-weight: 400; font-size: 12px; }
 .tree-row { display: flex; align-items: center; }
 .chevron { width: 20px; flex: none; background: none; border: 0; padding: 0; color: var(--text-tertiary); text-align: center; }
+.lock-toggle { flex: none; width: 24px; height: 24px; padding: 0; background: none; border: 0; border-radius: 6px; font-size: 12px; line-height: 1; opacity: 0; }
+.tree-row:hover .lock-toggle, .tree-row:focus-within .lock-toggle, .lock-toggle:focus-visible { opacity: 1; }
+.lock-toggle:hover { background: var(--surface); }
+.lock { font-size: 11px; }
 
 .topbar { display: flex; align-items: center; gap: 10px; padding: 12px 24px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .topbar-spacer { flex: 1; }
