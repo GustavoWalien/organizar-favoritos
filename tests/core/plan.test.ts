@@ -282,14 +282,15 @@ describe('runPlan e undoLast com marcas', () => {
     expect(marks.data.get('10')).toEqual({ id: '10', naoMexer: true })
   })
 
-  it('plano sem marcas não toca o MarksStore, nem no desfazer', async () => {
+  it('plano sem marcas só lê o MarksStore (para o backup), nem grava no desfazer', async () => {
     const api = makeFakeApi(sampleTree)
     const marks = makeFakeMarks([{ id: '10', naoMexer: true }])
     const { run, undo } = stores(marks)
     const r = await runPlan(plan([{ op: 'move', id: '11', toParentId: '2' }]), api, 1, run)
     expect(r.entry.marksBefore).toBeUndefined()
     await undoLast(api, undo)
-    expect(marks.calls).toEqual([])
+    // Só a leitura das marcas para o backup automático; nada é gravado nem regravado.
+    expect(marks.calls).toEqual(['all'])
   })
 
   it('plano só de marcas (sem operações) ainda vai para o diário e pode ser desfeito', async () => {
@@ -354,5 +355,29 @@ describe('undoIfLatest', () => {
 
   it('devolve null quando não há diário', async () => {
     expect(await undoIfLatest(makeFakeApi(sampleTree), 'a')).toBeNull()
+  })
+})
+
+describe('backup automático com marcas', () => {
+  it('grava no backup as marcas atuais de store.marks', async () => {
+    const saved: Snapshot[] = []
+    const marks = makeFakeMarks([{ id: '10', naoMexer: true }, { id: '20', sugestao: 'Ler' }])
+    const store: RunStore = { saveSnapshot: async (s) => { saved.push(s) }, saveEntry: async () => {}, marks }
+    await runPlan(plan([{ op: 'move', id: '10', toParentId: '2' }]), makeFakeApi(sampleTree), 1, store)
+    expect(saved[0]?.flags).toEqual([{ id: '10', naoMexer: true }, { id: '20', sugestao: 'Ler' }])
+  })
+
+  it('sem store.marks o backup não tem flags', async () => {
+    const saved: Snapshot[] = []
+    const store: RunStore = { saveSnapshot: async (s) => { saved.push(s) }, saveEntry: async () => {} }
+    await runPlan(plan([{ op: 'move', id: '10', toParentId: '2' }]), makeFakeApi(sampleTree), 1, store)
+    expect(saved[0] && 'flags' in saved[0]).toBe(false)
+  })
+
+  it('sem nenhuma marca o backup não tem flags', async () => {
+    const saved: Snapshot[] = []
+    const store: RunStore = { saveSnapshot: async (s) => { saved.push(s) }, saveEntry: async () => {}, marks: makeFakeMarks() }
+    await runPlan(plan([{ op: 'move', id: '10', toParentId: '2' }]), makeFakeApi(sampleTree), 1, store)
+    expect(saved[0] && 'flags' in saved[0]).toBe(false)
   })
 })

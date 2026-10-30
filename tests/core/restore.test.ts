@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { runPlan } from '../../src/core/plan'
 import { planRestoreAll, planRestoreItem } from '../../src/core/restore'
 import { createSnapshot } from '../../src/core/snapshot'
 import type { BmFolder, BmNode, Operation } from '../../src/core/types'
+import { makeFakeApi, makeFakeMarks } from '../fixtures/fakeApi'
 import { sampleTree } from '../fixtures/sampleTree'
 
 const snap = createSnapshot(sampleTree, 'antes', 0)
@@ -97,5 +99,65 @@ describe('planRestoreItem', () => {
   it('recusa um id que não está no backup e as pastas raiz', () => {
     expect(() => planRestoreItem(snap, '999', sampleTree, now)).toThrow('não está')
     expect(() => planRestoreItem(snap, '1', sampleTree, now)).toThrow('raiz')
+  })
+})
+
+describe('restauração com marcas', () => {
+  const snapMarked = createSnapshot(sampleTree, 'antes', 0, 'manual', [
+    { id: '10', naoMexer: true },
+    { id: '5', sugestao: 'Programação', aprovado: 'sim' },
+  ])
+  const store = (marks: ReturnType<typeof makeFakeMarks>) => ({ saveSnapshot: async () => {}, saveEntry: async () => {}, marks })
+
+  it('planRestoreAll põe tempId em todo create-link/create-folder e uma PlanMark por marca', () => {
+    const p = planRestoreAll(snapMarked, sampleTree, now)
+    const temps = p.operations.flatMap((o) => (o.op === 'create-link' || o.op === 'create-folder' ? [o.tempId] : []))
+    expect(temps.every((t) => typeof t === 'string')).toBe(true)
+    expect(new Set(temps).size).toBe(temps.length)
+    const mdn = p.operations.find((o) => o.op === 'create-link' && o.title === 'MDN')
+    const dev = p.operations.find((o) => o.op === 'create-folder' && o.title === 'Dev')
+    expect(p.marks).toEqual([
+      { target: (mdn as { tempId: string }).tempId, patch: { naoMexer: true } },
+      { target: (dev as { tempId: string }).tempId, patch: { sugestao: 'Programação', aprovado: 'sim' } },
+    ])
+  })
+
+  it('executado com runPlan, a marca fica no id novo', async () => {
+    const api = makeFakeApi(without('10', '11'))
+    const marks = makeFakeMarks()
+    const p = planRestoreAll(snapMarked, await api.getTree(), now)
+    const r = await runPlan(p, api, 1, store(marks))
+    const mdn = p.operations.find((o) => o.op === 'create-link' && o.title === 'MDN') as { tempId: string }
+    const newId = r.idMap[mdn.tempId]!
+    expect(marks.data.get(newId)).toEqual({ id: newId, naoMexer: true })
+    expect(marks.data.has('10')).toBe(false)
+  })
+
+  it('planRestoreItem de item apagado recria com tempId e marca no id novo', async () => {
+    const api = makeFakeApi(without('10'))
+    const marks = makeFakeMarks()
+    const p = planRestoreItem(snapMarked, '10', await api.getTree(), now)
+    expect(p.operations[0]).toMatchObject({ op: 'create-link', parentId: '5', tempId: expect.any(String) })
+    const r = await runPlan(p, api, 1, store(marks))
+    const newId = Object.values(r.idMap)[0]!
+    expect(marks.data.get(newId)).toEqual({ id: newId, naoMexer: true })
+  })
+
+  it('planRestoreItem de pasta apagada leva só as marcas da pasta e dos filhos que estavam nela', () => {
+    const p = planRestoreItem(snapMarked, '5', without('5'), now)
+    expect(p.marks).toHaveLength(2)
+  })
+
+  it('item que ainda existe e só é movido de volta não duplica marca', () => {
+    const current = structuredClone(without('10'))
+    folder(current, '2').children.push({ kind: 'link', id: '10', parentId: '2', title: 'MDN', url: 'https://developer.mozilla.org/', dateAdded: 1 })
+    const p = planRestoreItem(snapMarked, '10', current, now)
+    expect(p.operations).toEqual([{ op: 'move', id: '10', toParentId: '5' }])
+    expect(p.marks ?? []).toEqual([])
+  })
+
+  it('snapshot sem flags restaura como antes, sem marks', () => {
+    expect(planRestoreAll(snap, sampleTree, now).marks ?? []).toEqual([])
+    expect(planRestoreItem(snap, '10', without('10'), now).marks ?? []).toEqual([])
   })
 })

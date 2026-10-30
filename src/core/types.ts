@@ -48,6 +48,8 @@ export interface Snapshot {
   /** `manual` nunca é apagado automaticamente. Ausente (backups antigos) conta como `auto`. */
   kind?: 'auto' | 'manual'
   tree: BmNode[]
+  /** Marcas do usuário no momento do backup. Ausente em backups antigos. */
+  flags?: ItemMark[]
 }
 
 export type Operation =

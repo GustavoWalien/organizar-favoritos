@@ -1,10 +1,19 @@
+import type { ItemMark } from './marks'
 import type { BmNode, Snapshot } from './types'
 
 let counter = 0
 
-export function createSnapshot(tree: BmNode[], reason: string, now: number, kind: 'auto' | 'manual' = 'auto'): Snapshot {
+export function createSnapshot(
+  tree: BmNode[],
+  reason: string,
+  now: number,
+  kind: 'auto' | 'manual' = 'auto',
+  flags?: ItemMark[],
+): Snapshot {
   counter++
-  return { id: `${now}-${counter.toString(36)}`, createdAt: now, reason, kind, tree }
+  const snapshot: Snapshot = { id: `${now}-${counter.toString(36)}`, createdAt: now, reason, kind, tree }
+  if (flags) snapshot.flags = flags
+  return snapshot
 }
 
 export function snapshotToJson(s: Snapshot): string {

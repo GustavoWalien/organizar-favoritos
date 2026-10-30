@@ -114,13 +114,14 @@ export async function runPlan(
   if (last && canShareBackup(last, now)) {
     snapshotId = last.id
   } else {
-    const snapshot = createSnapshot(tree, plan.label, now)
     try {
+      const flags = store.marks ? await store.marks.all() : []
+      const snapshot = createSnapshot(tree, plan.label, now, 'auto', flags.length > 0 ? flags : undefined)
       await store.saveSnapshot(snapshot)
+      snapshotId = snapshot.id
     } catch (e) {
       throw new BackupFailedError(e)
     }
-    snapshotId = snapshot.id
   }
 
   const realIds = new Map<string, string>()

@@ -46,4 +46,11 @@ describe('snapshot', () => {
   it('dois snapshots no mesmo instante têm ids diferentes', () => {
     expect(createSnapshot([], 'a', 5).id).not.toBe(createSnapshot([], 'a', 5).id)
   })
+
+  it('createSnapshot com flags guarda as marcas; sem flags o snapshot não ganha o campo', () => {
+    const flags = [{ id: '10', naoMexer: true }]
+    expect(createSnapshot(sampleTree, 'm', 0, 'manual', flags).flags).toEqual(flags)
+    expect('flags' in createSnapshot(sampleTree, 'm', 0)).toBe(false)
+    expect(JSON.parse(snapshotToJson(createSnapshot(sampleTree, 'm', 0, 'auto', flags))).flags).toEqual(flags)
+  })
 })
