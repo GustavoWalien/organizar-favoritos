@@ -1,4 +1,4 @@
-import { toCsv } from './csv'
+import { parseCsv, toCsv } from './csv'
 import { rootToken, type MarksMap } from './marks'
 import type { BmNode } from './types'
 
@@ -138,4 +138,113 @@ export function exportStructure(tree: BmNode[], marks: MarksMap): string {
     r.raiz,
   ])
   return toCsv([[...STRUCTURE_COLUMNS], ...body])
+}
+
+export interface RowIssue {
+  /** Número da linha no CSV lido; o cabeçalho é a linha 1 (ver `parseStructure`). */
+  line: number
+  message: string
+}
+
+const REQUIRED_COLUMNS = ['tipo', 'caminho', 'titulo', 'url', 'raiz'] as const
+const ROOTS: readonly StructureRow['raiz'][] = ['barra', 'outros', 'mobile']
+
+function isSupportedUrl(url: string): boolean {
+  try {
+    const p = new URL(url).protocol
+    return p === 'http:' || p === 'https:'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Lê o CSV da estrutura (inverso de `exportStructure`). As colunas são achadas pelo nome do
+ * cabeçalho (sem diferenciar maiúsculas, ignorando espaços nas pontas), em qualquer ordem; colunas
+ * desconhecidas são ignoradas. `tipo`, `caminho`, `titulo`, `url` e `raiz` são obrigatórias: se
+ * faltar alguma, vem `fatal` e `rows` vazio. Linhas com todos os campos vazios (sobras de planilha)
+ * são puladas sem aviso; as demais com problema geram um `RowIssue` e são descartadas (exceto
+ * `aprovado` inválido, que só perde o `aprovado`).
+ *
+ * `line` é o índice da linha entre as linhas lidas pelo `parseCsv` mais 1: o cabeçalho é a linha 1 e
+ * a primeira linha de dados é a 2. Como o `parseCsv` já descarta linhas sem nenhum caractere, o
+ * número pode ficar abaixo do da planilha quando houver essas linhas; linhas como `,,,,` contam.
+ * Quando `ordem` não é um inteiro não negativo, vale a posição de aparição: o índice da linha de
+ * dados entre as linhas lidas, a partir de 0 (a primeira linha de dados é 0), ou seja `line - 2`.
+ */
+export function parseStructure(text: string): { rows: StructureRow[]; issues: RowIssue[]; fatal?: string } {
+  const table = parseCsv(text)
+  const header = table[0]
+  if (!header) return { rows: [], issues: [], fatal: 'Arquivo vazio.' }
+
+  const col = new Map<string, number>()
+  header.forEach((name, i) => {
+    const key = name.trim().toLowerCase()
+    if (!col.has(key)) col.set(key, i)
+  })
+  const missing = REQUIRED_COLUMNS.filter((c) => !col.has(c))
+  if (missing.length > 0) {
+    const names = missing.join(', ')
+    return {
+      rows: [],
+      issues: [],
+      fatal: missing.length === 1 ? `Falta a coluna obrigatória: ${names}.` : `Faltam colunas obrigatórias: ${names}.`,
+    }
+  }
+
+  const rows: StructureRow[] = []
+  const issues: RowIssue[] = []
+
+  for (let idx = 1; idx < table.length; idx++) {
+    const cells = table[idx] ?? []
+    if (cells.every((c) => c.trim() === '')) continue
+    const line = idx + 1
+    const get = (name: string): string => {
+      const i = col.get(name)
+      return i === undefined ? '' : (cells[i] ?? '')
+    }
+    const reject = (message: string) => issues.push({ line, message })
+
+    const tipo = get('tipo').trim().toLowerCase()
+    if (tipo !== 'pasta' && tipo !== 'link') {
+      reject(`Tipo inválido: "${get('tipo').trim()}" (use pasta ou link).`)
+      continue
+    }
+    const raiz = ROOTS.find((r) => r === get('raiz').trim().toLowerCase())
+    if (!raiz) {
+      reject(`Raiz desconhecida: "${get('raiz').trim()}" (use barra, outros ou mobile).`)
+      continue
+    }
+    const path = decodePath(unguardFormula(get('caminho')))
+    if (path.length === 0) {
+      reject('Caminho vazio.')
+      continue
+    }
+    const url = unguardFormula(get('url')).trim()
+    if (tipo === 'link' && !isSupportedUrl(url)) {
+      reject(url === '' ? 'URL não suportada: o link está sem URL.' : `URL não suportada: ${url}`)
+      continue
+    }
+
+    const ordemText = get('ordem').trim()
+    const ordem = /^\d+$/.test(ordemText) ? Number(ordemText) : idx - 1
+
+    const aprovadoText = get('aprovado').trim().toLowerCase()
+    let aprovado: StructureRow['aprovado'] = ''
+    if (aprovadoText === 'sim' || aprovadoText === 'nao') aprovado = aprovadoText
+    else if (aprovadoText !== '') reject(`Valor de aprovado inválido: "${get('aprovado').trim()}" (use sim, nao ou deixe vazio); ignorado.`)
+
+    rows.push({
+      tipo,
+      raiz,
+      path,
+      title: unguardFormula(get('titulo')),
+      url: tipo === 'link' ? url : '',
+      ordem,
+      naoMexer: get('nao_mexer').trim().toLowerCase() === 'sim',
+      sugestao: unguardFormula(get('sugestao')),
+      aprovado,
+    })
+  }
+  return { rows, issues }
 }
