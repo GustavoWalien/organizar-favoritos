@@ -136,7 +136,19 @@ export default function Shell() {
   } else if (view.name === 'backups') {
     content = <BackupsView />
   } else {
-    content = <OverviewView tree={tree} overview={dashboard} mode={mode} folderOptions={options} busy={lib.busy} onNavigate={setView} onMove={lib.move} onTrash={lib.trash} />
+    content = (
+      <OverviewView
+        dashboard={dashboard}
+        steps={dash.steps}
+        recent={dash.recent}
+        lastBackupAt={dash.lastBackupAt}
+        busy={lib.busy}
+        onNavigate={setView}
+        onTestLinks={startLinkCheck}
+        onBackup={backupNow}
+        onUndo={(planId) => { void lib.undo(planId) }}
+      />
+    )
   }
 
   return (
