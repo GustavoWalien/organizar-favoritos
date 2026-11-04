@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { domainOf, lastUsedLabel } from '../../src/ui/format'
+import { ageLabel, domainOf, lastUsedLabel } from '../../src/ui/format'
 
 const DAY = 86_400_000
 const NOW = 1_800_000_000_000
@@ -34,5 +34,19 @@ describe('lastUsedLabel', () => {
   })
   it('data no futuro (relógio mudou) vira "hoje"', () => {
     expect(lastUsedLabel(NOW + 5 * DAY, NOW)).toBe('hoje')
+  })
+})
+
+describe('ageLabel', () => {
+  const NOW = 10 * 86_400_000
+  it('minutos, horas, dias, meses e anos', () => {
+    expect(ageLabel(NOW - 20_000, NOW)).toBe('agora')
+    expect(ageLabel(NOW - 5 * 60_000, NOW)).toBe('há 5 min')
+    expect(ageLabel(NOW - 2 * 3_600_000, NOW)).toBe('há 2 h')
+    expect(ageLabel(NOW - 30 * 3_600_000, NOW)).toBe('ontem')
+    expect(ageLabel(NOW - 3 * 86_400_000, NOW)).toBe('há 3 dias')
+    expect(ageLabel(NOW - 65 * 86_400_000, NOW + 0)).toBe('há 2 meses')
+    expect(ageLabel(NOW - 800 * 86_400_000, NOW)).toBe('há 2 anos')
+    expect(ageLabel(NOW + 5000, NOW)).toBe('agora')
   })
 })

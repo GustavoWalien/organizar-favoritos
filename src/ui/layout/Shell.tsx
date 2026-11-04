@@ -3,14 +3,15 @@ import { buildFolderTree, directLinks, findFolderNode, folderOptions, folderPath
 import { findTrash } from '../../core/cleanup'
 import type { PaletteAction } from '../../core/palette'
 import type { View } from '../../core/route'
-import { lockedFolderIds } from '../../core/organize'
-import { computeOverview } from '../../core/overview'
 import { flattenLinks, otherBookmarksId } from '../../core/tree'
 import CommandPalette from '../components/CommandPalette'
 import MovePicker from '../components/MovePicker'
 import Toast from '../components/Toast'
+import { requestLinkCheckPermission } from '../../chrome/permissions'
 import { makeBackup } from '../backupActions'
 import { useLibrary } from '../state/useLibrary'
+import { useRoute } from '../state/useRoute'
+import { useDashboard } from '../state/useDashboard'
 import BackupsView from '../views/BackupsView'
 import CleanupView from '../views/CleanupView'
 import OrganizeView from '../views/OrganizeView'
@@ -23,18 +24,17 @@ import Topbar from './Topbar'
 
 export default function Shell() {
   const lib = useLibrary()
-  const [view, setView] = useState<View>({ name: 'overview' })
+  const [route, setView] = useRoute()
   const [mode, setMode] = useState<ViewMode>(loadViewMode)
 
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [moveIds, setMoveIds] = useState<string[] | null>(null)
+  const [autoTest, setAutoTest] = useState(false)
 
   const tree = lib.tree
   const allLinks = useMemo(() => (tree ? flattenLinks(tree, findTrash(tree)?.id) : []), [tree])
 
-  const locked = useMemo(() => lockedFolderIds(lib.marks), [lib.marks])
-
-  const overview = useMemo(() => (tree ? computeOverview(tree, Date.now()) : null), [tree])
+  const dash = useDashboard(tree)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -47,11 +47,19 @@ export default function Shell() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  if (!tree) return <p className="loading">Lendo favoritos…</p>
+  // Pasta que não existe mais (apagada por fora, endereço antigo): corrige o endereço para a Visão geral.
+  const missingFolder = !!tree && route.name === 'folder' && !findFolderNode(buildFolderTree(tree), route.id)
+  useEffect(() => {
+    if (missingFolder) setView({ name: 'overview' }, { replace: true })
+  }, [missingFolder, setView])
+
+  if (!tree || !dash.dashboard) return <p className="loading">Lendo favoritos…</p>
+  const dashboard = dash.dashboard
+
+  const view: View = missingFolder ? { name: 'overview' } : route
 
   const folders = sidebarFolders(tree)
   const options = folderOptions(tree)
-  const trash = findTrash(tree)
   const changeMode = (m: ViewMode) => { setMode(m); saveViewMode(m) }
 
   const dropLinks = (ids: string[], target: DropTarget) => {
@@ -65,13 +73,25 @@ export default function Shell() {
     else void lib.trash(ids)
   }
 
+  /** "Testar agora" fora da Limpeza: pede a permissão no próprio clique e abre a aba já testando. */
+  const startLinkCheck = () => {
+    requestLinkCheckPermission().then((ok) => {
+      if (!ok) { lib.notify('Sem a permissão de acesso aos sites não dá para testar os links'); return }
+      setAutoTest(true)
+      setView({ name: 'cleanup', tab: 'quebrados' })
+    }, (e) => lib.notify(`Erro: ${e instanceof Error ? e.message : String(e)}`))
+  }
+
+  const backupNow = () => {
+    makeBackup().then(() => { lib.notify('Backup feito'); void dash.refresh() }, (e) => lib.notify(`Erro: ${e instanceof Error ? e.message : String(e)}`))
+  }
+
   const runAction = (action: PaletteAction) => {
     setPaletteOpen(false)
-    if (action === 'backup') {
-      makeBackup().then(() => lib.notify('Backup feito'), (e) => lib.notify(`Erro: ${e instanceof Error ? e.message : String(e)}`))
-    } else if (action === 'analisar-sem-uso') setView({ name: 'cleanup', start: 'sem-uso' })
-    else if (action === 'achar-duplicados') setView({ name: 'cleanup', start: 'duplicado' })
-    else if (action === 'testar-links') setView({ name: 'cleanup', start: 'quebrado' })
+    if (action === 'backup') backupNow()
+    else if (action === 'analisar-sem-uso') setView({ name: 'cleanup', tab: 'sem-uso' })
+    else if (action === 'achar-duplicados') setView({ name: 'cleanup', tab: 'duplicados' })
+    else if (action === 'testar-links') startLinkCheck()
     else if (action === 'abrir-organizar') setView({ name: 'organize' })
     else setView({ name: 'trash' })
   }
@@ -85,11 +105,8 @@ export default function Shell() {
     view.name === 'folder' ? folderPath(tree, view.id)
     : view.name === 'uncategorized' ? ['Sem categoria']
     : view.name === 'trash' ? ['Lixeira']
-    : view.name === 'cleanup' ? ['Limpeza']
-    : view.name === 'backups' ? ['Backups']
-    : view.name === 'organize' ? ['Organizar']
-    : ['Visão geral']
-  const listView = view.name === 'folder' || view.name === 'uncategorized' || view.name === 'trash' || view.name === 'overview'
+    : []
+  const listView = breadcrumb.length > 0
 
   let content
   if (view.name === 'folder') {
@@ -102,13 +119,38 @@ export default function Shell() {
   } else if (view.name === 'trash') {
     content = <TrashView tree={tree} mode={mode} busy={lib.busy} onChanged={lib.reload} onNotify={lib.notify} folderOptions={options} onMove={lib.move} />
   } else if (view.name === 'cleanup') {
-    content = <CleanupView key={`cleanup-${view.start ?? ''}`} start={view.start} />
+    content = (
+      <CleanupView
+        tab={view.tab}
+        prefs={dash.prefs}
+        linkCheck={dash.linkCheck}
+        tree={tree}
+        autoTest={autoTest}
+        onAutoTestDone={() => setAutoTest(false)}
+        onTab={(tab) => setView({ name: 'cleanup', tab })}
+        onPrefs={dash.setPrefs}
+        onLinkCheck={dash.setLinkCheck}
+        onNotify={lib.notify}
+      />
+    )
   } else if (view.name === 'organize') {
     content = <OrganizeView tree={tree} marks={lib.marks} folderOptions={options} busy={lib.busy} onMove={lib.move} onSetProtected={lib.setProtected} onNotify={lib.notify} onChanged={lib.reload} />
   } else if (view.name === 'backups') {
-    content = <BackupsView />
+    content = <BackupsView tree={tree} lastExportAt={dash.lastExportAt} onChanged={() => { void dash.refresh() }} />
   } else {
-    content = <OverviewView tree={tree} overview={overview!} mode={mode} folderOptions={options} busy={lib.busy} onNavigate={setView} onMove={lib.move} onTrash={lib.trash} />
+    content = (
+      <OverviewView
+        dashboard={dashboard}
+        steps={dash.steps}
+        recent={dash.recent}
+        lastBackupAt={dash.lastBackupAt}
+        busy={lib.busy}
+        onNavigate={setView}
+        onTestLinks={startLinkCheck}
+        onBackup={backupNow}
+        onUndo={(planId) => { void lib.undo(planId) }}
+      />
+    )
   }
 
   return (
@@ -116,17 +158,14 @@ export default function Shell() {
       <Sidebar
         folders={folders}
         view={view}
-        uncategorizedCount={uncategorizedLinks(tree).length}
-        cleanupCount={overview ? overview.inactive + overview.duplicates : 0}
-        trashCount={trash ? flattenLinks([trash]).length : 0}
-        lockedFolderIds={locked}
-        onToggleFolderLock={(id) => { void lib.setProtected([id], !locked.has(id), 'pasta') }}
+        dashboard={dashboard}
+        lastBackupAt={dash.lastBackupAt}
         onNavigate={setView}
         onNewFolder={newFolder}
         onDropLinks={dropLinks}
       />
       <div className="main">
-        <Topbar breadcrumb={breadcrumb} showViewMode={listView} mode={mode} onMode={changeMode} onOpenPalette={() => setPaletteOpen(true)} />
+        <Topbar breadcrumb={breadcrumb} showViewMode={listView} mode={mode} busy={lib.busy} onMode={changeMode} onOpenPalette={() => setPaletteOpen(true)} onBackup={backupNow} />
         <div className="content">{content}</div>
       </div>
       {paletteOpen && (
