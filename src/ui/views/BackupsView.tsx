@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { chromeBookmarksApi } from '../../chrome/bookmarksApi'
+import { userFolderCount } from '../../core/dashboard'
 import { findDeleted } from '../../core/deletedSearch'
 import { runPlan, BackupFailedError } from '../../core/plan'
 import { planRestoreAll, planRestoreItem } from '../../core/restore'
@@ -90,7 +91,7 @@ export default function BackupsView({ tree, lastExportAt, onChanged }: Props) {
   const exportStale = lastExportAt === null || now - lastExportAt > EXPORT_STALE_MS
   const deleted = useMemo(() => findDeleted(snapshots, tree, query), [snapshots, tree, query])
   const byId = useMemo(() => new Map(snapshots.map((s) => [s.id, s])), [snapshots])
-  const sizes = useMemo(() => new Map(snapshots.map((s) => [s.id, summarize(s.tree)])), [snapshots])
+  const sizes = useMemo(() => new Map(snapshots.map((s) => [s.id, { links: summarize(s.tree).links, folders: userFolderCount(s.tree) }])), [snapshots])
 
   return (
     <section className="backups">

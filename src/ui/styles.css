@@ -234,6 +234,7 @@ button.big { min-height: 44px; display: inline-flex; align-items: center; gap: 8
 .small { font-size: 13px; }
 .dash-row { display: grid; gap: 16px; }
 .dash-row.kpis { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+@media (min-width: 1180px) { .dashboard .dash-row.kpis { grid-template-columns: 2fr 1fr 1fr 1fr; } .dashboard .organization { grid-column: auto; } }
 .dash-row.two { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
 .organization { grid-column: span 2; display: flex; flex-direction: column; gap: 12px; }
 @media (max-width: 760px) { .organization { grid-column: auto; } }
@@ -273,6 +274,7 @@ button.kpi-card:hover:not(:disabled) { background: var(--raised); }
 .col-value { text-align: center; font-size: 12px; color: var(--text-secondary); }
 .col-bar { background: var(--primary); border-radius: 6px 6px 0 0; min-height: 2px; }
 .col-bar.warn { background: var(--warn-text); }
+.col-bar.muted { background: var(--text-tertiary); }
 .columns-labels { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-top: 8px; font-size: 12px; color: var(--text-secondary); text-align: center; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -290,9 +292,12 @@ button.kpi-card:hover:not(:disabled) { background: var(--raised); }
 .menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 170px; display: grid; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 12px 30px rgba(0, 0, 0, .35); }
 .menu button { background: none; border: 0; text-align: left; padding: 7px 10px; border-radius: 6px; }
 .menu button:hover, .menu button:focus-visible { background: var(--raised); }
-.restore-dialog { width: min(620px, 94vw); max-height: 80vh; overflow-y: auto; }
+.restore-dialog { width: min(620px, 94vw); max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.restore-dialog > * { flex-shrink: 0; }
+.restore-option button { white-space: nowrap; }
 .restore-option { display: flex; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 10px; }
-.restore-option.column { flex-direction: column; align-items: stretch; }
+.restore-option.column { flex-direction: column; align-items: stretch; gap: 8px; }
+.restore-option .dialog-list:empty { display: none; }
 .restore-option p { margin: 4px 0 0; }
 .restore-hit { display: flex; align-items: center; gap: 10px; padding: 4px 6px; }
 

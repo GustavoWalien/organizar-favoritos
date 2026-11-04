@@ -152,7 +152,7 @@ export default function OverviewView({ dashboard: d, steps, recent, lastBackupAt
             {usage.map((u) => (
               <div key={u.label} className="column">
                 <span className={u.warn ? 'col-value tone-sem-uso' : 'col-value'}>{fmt(u.value)}</span>
-                <div className={u.warn ? 'col-bar warn' : u.muted ? 'col-bar seg-loose' : 'col-bar'} style={{ height: `${(u.value / maxUsage) * 100}%` }} />
+                <div className={u.warn ? 'col-bar warn' : u.muted ? 'col-bar muted' : 'col-bar'} style={{ height: `${(u.value / maxUsage) * 100}%` }} />
               </div>
             ))}
           </div>

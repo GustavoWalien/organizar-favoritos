@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { TRASH_TITLE } from '../../src/core/cleanup'
-import { computeDashboard, nextSteps, type DashboardInput } from '../../src/core/dashboard'
+import { computeDashboard, nextSteps, userFolderCount, type DashboardInput } from '../../src/core/dashboard'
 import type { LinkCheckRecord } from '../../src/core/linkCheckRecord'
 import type { BmFolder, BmLink, BmNode } from '../../src/core/types'
 
@@ -143,5 +143,14 @@ describe('nextSteps', () => {
     expect(b(null)).toBe(false)
     expect(b(NOW - 7 * DAY)).toBe(true)
     expect(b(NOW - 7 * DAY - 1)).toBe(false)
+  })
+})
+
+describe('userFolderCount', () => {
+  it('conta as pastas fora das raízes do Chrome e fora da Lixeira, igual ao dashboard', () => {
+    const tree = root([dir('10', '1', 'A', [dir('11', '10', 'B')])], [dir('t', '2', TRASH_TITLE, [dir('t2', 't', 'X')])])
+    expect(userFolderCount(tree)).toBe(2)
+    expect(computeDashboard(tree, input()).folderCount).toBe(2)
+    expect(userFolderCount(root([]))).toBe(0)
   })
 })

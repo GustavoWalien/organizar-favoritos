@@ -47,6 +47,14 @@ function countFolders(nodes: BmNode[], skipId: string | undefined): number {
   return n
 }
 
+/** Pastas criadas pelo usuário: fora das raízes do Chrome (Barra, Outros, Mobile) e fora da Lixeira. */
+export function userFolderCount(tree: BmNode[]): number {
+  const trashId = findTrash(tree)?.id
+  const top = tree[0]
+  const roots = top && top.kind === 'folder' ? top.children : []
+  return roots.reduce((n, r) => n + (r.kind === 'folder' ? countFolders(r.children, trashId) : 0), 0)
+}
+
 /** Todos os números do painel, da barra lateral e do popup, a partir de uma leitura da árvore. */
 export function computeDashboard(tree: BmNode[], input: DashboardInput): Dashboard {
   const trash = findTrash(tree)
@@ -78,9 +86,7 @@ export function computeDashboard(tree: BmNode[], input: DashboardInput): Dashboa
   // `sort` é estável: no empate vale a ordem da árvore (Sem categoria por último).
   const topFolders = candidates.filter((f) => f.count > 0).sort((a, b) => b.count - a.count).slice(0, 6)
 
-  const top = tree[0]
-  const roots = top && top.kind === 'folder' ? top.children.filter((c) => c.kind === 'folder') : []
-  const folderCount = roots.reduce((n, r) => n + (r.kind === 'folder' ? countFolders(r.children, trash?.id) : 0), 0)
+  const folderCount = userFolderCount(tree)
 
   const rec = input.linkCheck
   return {
