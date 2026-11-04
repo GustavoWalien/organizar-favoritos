@@ -39,3 +39,29 @@ describe('findDuplicates', () => {
     expect(groupsFullySelected(groups, new Set(['b', 'd']))).toEqual([])
   })
 })
+
+describe('findDuplicates com política', () => {
+  const u = 'https://dup.example/x'
+  const A: FlatLink = { ...link('A', u, 100, ['R', 'a']) }
+  const B: FlatLink = { ...link('B', u, 200, ['R', 'a', 'b', 'c']), dateLastUsed: 50 }
+  const C: FlatLink = { ...link('C', u, 300, ['R', 'a', 'b']), dateLastUsed: 900 }
+  const keepOf = (links: FlatLink[], p?: Parameters<typeof findDuplicates>[1]) => findDuplicates(links, p)[0]!.keep.id
+
+  it('cada política escolhe a sua cópia', () => {
+    expect(keepOf([A, B, C], 'antiga')).toBe('A')
+    expect(keepOf([A, B, C], 'especifica')).toBe('B')
+    expect(keepOf([A, B, C], 'usada')).toBe('C')
+    expect(keepOf([A, B, C])).toBe('A')
+  })
+
+  it('empates caem na mais antiga', () => {
+    const X = link('X', u, 50, ['R', 'a'])
+    expect(keepOf([A, X], 'especifica')).toBe('X')
+    expect(keepOf([A, X], 'usada')).toBe('X')
+  })
+
+  it('a que fica sai dos extras', () => {
+    const g = findDuplicates([A, B, C], 'usada')[0]!
+    expect(g.extras.map((l) => l.id).sort()).toEqual(['A', 'B'])
+  })
+})

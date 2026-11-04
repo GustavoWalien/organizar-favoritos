@@ -9,8 +9,23 @@ export interface DuplicateGroup {
   extras: FlatLink[]
 }
 
-/** Mantém o favorito mais antigo; no empate, o que está na pasta mais funda. */
-export function findDuplicates(links: FlatLink[]): DuplicateGroup[] {
+const oldest = (a: FlatLink, b: FlatLink) => a.dateAdded - b.dateAdded
+const deeper = (a: FlatLink, b: FlatLink) => b.path.length - a.path.length
+const recent = (a: FlatLink, b: FlatLink) => (b.dateLastUsed ?? -Infinity) - (a.dateLastUsed ?? -Infinity) || 0
+
+/** Ordem de preferência de cada política: o primeiro da ordem fica. */
+const ORDER: Record<KeepPolicy, (a: FlatLink, b: FlatLink) => number> = {
+  antiga: (a, b) => oldest(a, b) || deeper(a, b),
+  especifica: (a, b) => deeper(a, b) || oldest(a, b),
+  usada: (a, b) => recent(a, b) || oldest(a, b),
+}
+
+/**
+ * Agrupa favoritos de mesmo endereço normalizado. Fica uma cópia por grupo, escolhida pela política:
+ * `antiga` (padrão) = a mais antiga, no empate a mais funda; `especifica` = a mais funda, no empate a mais
+ * antiga; `usada` = a de uso mais recente (sem registro conta como nunca), no empate a mais antiga.
+ */
+export function findDuplicates(links: FlatLink[], policy: KeepPolicy = 'antiga'): DuplicateGroup[] {
   const groups = new Map<string, FlatLink[]>()
   for (const l of links) {
     const key = normalizeUrl(l.url)
@@ -22,7 +37,7 @@ export function findDuplicates(links: FlatLink[]): DuplicateGroup[] {
   const out: DuplicateGroup[] = []
   for (const g of groups.values()) {
     if (g.length < 2) continue
-    const sorted = [...g].sort((a, b) => a.dateAdded - b.dateAdded || b.path.length - a.path.length)
+    const sorted = [...g].sort(ORDER[policy])
     out.push({ keep: sorted[0]!, extras: sorted.slice(1) })
   }
   return out
