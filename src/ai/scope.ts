@@ -21,6 +21,8 @@ export interface Candidate {
   segments: string[]
   /** Barra ou Outros: só servem de pai para pasta nova. */
   isRoot: boolean
+  /** Pasta nova criada num lote anterior: `folderId` é a pasta existente acima dela. */
+  newPath?: string[]
 }
 
 export interface ScopeItem {

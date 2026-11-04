@@ -75,3 +75,11 @@ describe('validateResponse', () => {
     expect(r.suggestions.map((s) => s.itemId)).toEqual(['b'])
   })
 })
+
+describe('candidata que é pasta nova de um lote anterior', () => {
+  it('usa o newPath da candidata como prefixo, até 2 níveis', () => {
+    const extra = [...cands, { k: 4, folderId: '1', label: 'Barra › Finanças', segments: ['Barra', 'Finanças'], isRoot: false, newPath: ['Finanças'] }]
+    const r = validateResponse(JSON.stringify({ itens: [it0({ pasta: 4 }), it0({ i: 1, pasta: 4, nova: 'Bancos / Extra' })] }), batch, extra, true, tree)
+    expect(r.suggestions.map((s) => [s.folderId, s.newPath])).toEqual([['1', ['Finanças']], ['1', ['Finanças', 'Bancos']]])
+  })
+})

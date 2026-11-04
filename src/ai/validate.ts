@@ -71,6 +71,16 @@ export function validateResponse(text: string, batch: Batch, candidates: Candida
       .filter((n) => n.length > 0)
       .slice(0, MAX_LEVELS)
 
+    // Candidata que já é pasta nova (de um lote anterior): os nomes vão abaixo dela.
+    if (cand.newPath && cand.newPath.length > 0) {
+      const path = [...cand.newPath, ...names].slice(0, Math.max(MAX_LEVELS, cand.newPath.length))
+      if (!allowNew) continue
+      const conf = CONF.find((c) => c === r.confianca) ?? 'baixa'
+      const reason = (typeof r.motivo === 'string' ? r.motivo : '').trim().slice(0, MAX_REASON)
+      suggestions.push({ itemId: batch.ids[i]!, folderId: cand.folderId, newPath: path, confidence: conf, reason })
+      continue
+    }
+
     // Nomes que já existem viram pasta existente.
     let folderId = cand.folderId
     let rest = names
