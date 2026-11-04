@@ -42,6 +42,25 @@ export async function previewImport(api: BookmarksApi, marks: MarksMap, text: st
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
+/**
+ * Texto da prévia quando não há nada a aplicar. Diz primeiro que nada vai mudar (nem duplicar) e só
+ * depois fala das linhas que ficaram de fora, que também não mexem no navegador.
+ */
+export function nothingToImportMessage(prep: Pick<ImportPreparation, 'rows' | 'preview' | 'issues'>): string {
+  const n = prep.rows.length
+  const left = prep.preview.blocked.length + prep.preview.ignored.length + prep.issues.length
+  const fmt = n.toLocaleString('pt-BR')
+  if (left === 0) {
+    const lines = n === 1 ? 'a linha do CSV já bate' : `as ${fmt} linhas do CSV já batem`
+    return `Nada a alterar: ${lines} com o navegador. Nenhum favorito será criado, movido ou duplicado.`
+  }
+  const lines = n === 1 ? 'a linha lida já bate' : `as ${fmt} linhas lidas já batem`
+  const out = left === 1
+    ? '1 linha ficou de fora (listada abaixo) e também não muda nada.'
+    : `${left.toLocaleString('pt-BR')} linhas ficaram de fora (listadas abaixo) e também não mudam nada.`
+  return `Nada a alterar: ${lines} com o navegador. ${out}`
+}
+
 /** "12 pastas e 140 favoritos a criar, 8 a mover, 3 marcas, 2 bloqueados, 1 ignorado", só com os itens escolhidos. */
 export function importSummary(preview: ImportPreview, selected?: Set<string>): string {
   const chosen = selected ? preview.items.filter((i) => selected.has(i.key)) : preview.items

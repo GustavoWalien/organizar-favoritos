@@ -11,6 +11,7 @@ import {
   importFileProblem,
   type ImportResult,
   importSummary,
+  nothingToImportMessage,
   MAX_IMPORT_BYTES,
   previewImport,
 } from '../../src/ui/marksActions'
@@ -242,6 +243,27 @@ describe('importSummary', () => {
     expect(importSummary(preview)).toBe('1 pasta e 2 favoritos a criar, 1 a mover, 0 marcas, 0 bloqueados, 2 ignorados')
     expect(importSummary(preview, new Set(['c']))).toBe('Nada a criar, 1 a mover, 0 marcas, 0 bloqueados, 2 ignorados')
     expect(importSummary(preview, new Set(['a']))).toBe('1 pasta e 1 favorito a criar, 0 a mover, 0 marcas, 0 bloqueados, 2 ignorados')
+  })
+})
+
+describe('nothingToImportMessage', () => {
+  const empty = { items: [], blocked: [], ignored: [] }
+  const rows = (n: number) => Array.from({ length: n }, () => ({}) as never)
+  it('sem nada de fora: diz que o navegador já está igual e quantas linhas foram conferidas', () => {
+    expect(nothingToImportMessage({ rows: rows(1102), preview: empty, issues: [] }))
+      .toBe('Nada a alterar: as 1.102 linhas do CSV já batem com o navegador. Nenhum favorito será criado, movido ou duplicado.')
+    expect(nothingToImportMessage({ rows: rows(1), preview: empty, issues: [] }))
+      .toBe('Nada a alterar: a linha do CSV já bate com o navegador. Nenhum favorito será criado, movido ou duplicado.')
+  })
+  it('com linhas de fora: tranquiliza primeiro e diz que as de fora não mudam nada', () => {
+    const issues = [{ line: 3, message: 'x' }, { line: 4, message: 'y' }]
+    const preview = { ...empty, ignored: [{ label: 'z', reason: 'r' }] }
+    expect(nothingToImportMessage({ rows: rows(10), preview, issues })).toBe(
+      'Nada a alterar: as 10 linhas lidas já batem com o navegador. 3 linhas ficaram de fora (listadas abaixo) e também não mudam nada.',
+    )
+    expect(nothingToImportMessage({ rows: rows(10), preview: empty, issues: issues.slice(0, 1) })).toBe(
+      'Nada a alterar: as 10 linhas lidas já batem com o navegador. 1 linha ficou de fora (listada abaixo) e também não muda nada.',
+    )
   })
 })
 

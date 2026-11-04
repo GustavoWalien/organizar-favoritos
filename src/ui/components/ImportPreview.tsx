@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import type { ImportKind } from '../../core/importPlan'
 import { hasMore, pageOf } from '../../core/paging'
-import { importSummary, type ImportPreparation } from '../marksActions'
+import { importSummary, nothingToImportMessage, type ImportPreparation } from '../marksActions'
 
 interface Props {
   prep: ImportPreparation
@@ -116,11 +116,7 @@ export default function ImportPreview({ prep, fileName, busy, onApply, onClose, 
         {fatal ? (
           <p id={summaryId} className="import-error" role="alert">Não foi possível importar: {fatal}</p>
         ) : (
-          <p id={summaryId} className="muted">{!nothing
-            ? importSummary(preview, selected)
-            : preview.blocked.length + preview.ignored.length + issues.length > 0
-              ? 'Nada a importar. Veja abaixo o que ficou de fora.'
-              : 'Nada a importar: o navegador já tem tudo o que o CSV pede.'}</p>
+          <p id={summaryId} className={nothing ? undefined : 'muted'}>{nothing ? nothingToImportMessage(prep) : importSummary(preview, selected)}</p>
         )}
 
         {!fatal && (
@@ -161,7 +157,7 @@ export default function ImportPreview({ prep, fileName, busy, onApply, onClose, 
               render={(b) => <span className="import-item"><span>{b.label || '(sem título)'}</span><small>{b.reason}</small></span>}
             />
             <PagedSection
-              title="Linhas do CSV com problema"
+              title="Linhas que não puderam ser lidas"
               list={issues}
               render={(i) => <span className="import-item"><span>Linha {i.line}</span><small>{i.message}</small></span>}
             />
