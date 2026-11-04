@@ -100,3 +100,29 @@ export function computeDashboard(tree: BmNode[], input: DashboardInput): Dashboa
     linkCheck: rec ? { state: rec.complete ? 'done' : 'partial', checkedAt: rec.checkedAt } : { state: 'never', checkedAt: null },
   }
 }
+
+export type StepId = 'duplicados' | 'testar-links' | 'quebrados' | 'sem-uso' | 'sem-categoria' | 'backup'
+
+export interface NextStep {
+  id: StepId
+  /** Quantos itens o passo resolve (0 para testar links e backup). */
+  count: number
+  done: boolean
+}
+
+const LINK_CHECK_MAX_AGE = 30 * DAY_MS
+const BACKUP_MAX_AGE = 7 * DAY_MS
+
+/** Os 6 passos, sempre nesta ordem. Quem desenha escolhe quantos mostrar. */
+export function nextSteps(d: Dashboard, lastBackupAt: number | null, now: number): NextStep[] {
+  const lc = d.linkCheck
+  const linksFresh = lc.state === 'done' && lc.checkedAt !== null && now - lc.checkedAt <= LINK_CHECK_MAX_AGE
+  return [
+    { id: 'duplicados', count: d.duplicates, done: d.duplicates === 0 },
+    { id: 'testar-links', count: 0, done: linksFresh },
+    { id: 'quebrados', count: d.broken, done: d.broken === 0 },
+    { id: 'sem-uso', count: d.inactive, done: d.inactive === 0 },
+    { id: 'sem-categoria', count: d.uncategorized, done: d.uncategorized === 0 },
+    { id: 'backup', count: 0, done: lastBackupAt !== null && now - lastBackupAt <= BACKUP_MAX_AGE },
+  ]
+}

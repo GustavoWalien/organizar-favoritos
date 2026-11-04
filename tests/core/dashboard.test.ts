@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { TRASH_TITLE } from '../../src/core/cleanup'
-import { computeDashboard, type DashboardInput } from '../../src/core/dashboard'
+import { computeDashboard, nextSteps, type DashboardInput } from '../../src/core/dashboard'
 import type { LinkCheckRecord } from '../../src/core/linkCheckRecord'
 import type { BmFolder, BmLink, BmNode } from '../../src/core/types'
 
@@ -108,5 +108,40 @@ describe('computeDashboard', () => {
     const tree = root([lnk('a', '1', 'https://a.example', { dateLastUsed: NOW - 60 * DAY })])
     expect(computeDashboard(tree, input({ inactiveDays: 365 })).inactive).toBe(0)
     expect(computeDashboard(tree, input({ inactiveDays: 30 })).inactive).toBe(1)
+  })
+})
+
+describe('nextSteps', () => {
+  const base = computeDashboard(root([]), input())
+  const d = (p: Partial<typeof base>) => ({ ...base, ...p })
+  const byId = (steps: ReturnType<typeof nextSteps>) => Object.fromEntries(steps.map((s) => [s.id, s]))
+  const done = { state: 'done' as const, checkedAt: NOW - DAY }
+
+  it('sempre os 6, na ordem fixa', () => {
+    expect(nextSteps(base, null, NOW).map((s) => s.id)).toEqual(['duplicados', 'testar-links', 'quebrados', 'sem-uso', 'sem-categoria', 'backup'])
+  })
+
+  it('pendências seguem as contagens', () => {
+    const s = byId(nextSteps(d({ duplicates: 3, broken: 2, inactive: 0, uncategorized: 5, linkCheck: done }), NOW, NOW))
+    expect(s.duplicados).toEqual({ id: 'duplicados', count: 3, done: false })
+    expect(s.quebrados).toEqual({ id: 'quebrados', count: 2, done: false })
+    expect(s['sem-uso']).toEqual({ id: 'sem-uso', count: 0, done: true })
+    expect(s['sem-categoria']).toEqual({ id: 'sem-categoria', count: 5, done: false })
+    expect(s['testar-links']).toEqual({ id: 'testar-links', count: 0, done: true })
+  })
+
+  it('testar links: nunca, parcial ou mais de 30 dias fica pendente', () => {
+    const t = (lc: typeof base.linkCheck) => byId(nextSteps(d({ linkCheck: lc }), null, NOW))['testar-links']!.done
+    expect(t({ state: 'never', checkedAt: null })).toBe(false)
+    expect(t({ state: 'partial', checkedAt: NOW })).toBe(false)
+    expect(t({ state: 'done', checkedAt: NOW - 30 * DAY })).toBe(true)
+    expect(t({ state: 'done', checkedAt: NOW - 30 * DAY - 1 })).toBe(false)
+  })
+
+  it('backup em dia até 7 dias', () => {
+    const b = (at: number | null) => byId(nextSteps(base, at, NOW)).backup!.done
+    expect(b(null)).toBe(false)
+    expect(b(NOW - 7 * DAY)).toBe(true)
+    expect(b(NOW - 7 * DAY - 1)).toBe(false)
   })
 })
