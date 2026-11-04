@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clear, filterByReason, mergeCandidates, selectAll, toggleOne, type Candidate } from '../../src/ui/selection'
+import { clear, filterByReason, mergeCandidates, selectAll, toggleOne, visibleSelection, type Candidate } from '../../src/ui/selection'
 
 const c = (id: string, ...reasons: Candidate['reasons']): Candidate => ({ id, title: id, url: `https://${id}.com/`, path: [], reasons })
 
@@ -36,5 +36,13 @@ describe('seleção', () => {
     const merged = mergeCandidates([c('a', 'sem-uso'), c('b', 'duplicado'), c('a', 'quebrado')])
     expect(merged.map((m) => m.id)).toEqual(['a', 'b'])
     expect(merged[0]!.reasons).toEqual(['sem-uso', 'quebrado'])
+  })
+})
+
+describe('visibleSelection', () => {
+  it('só os marcados que ainda estão na lista vão para a Lixeira', () => {
+    const list = [c('a', 'sem-uso'), c('b', 'sem-uso')]
+    expect(visibleSelection(new Set(['a', 'b', 'sumiu', 'outra-aba']), list).sort()).toEqual(['a', 'b'])
+    expect(visibleSelection(new Set(['x']), list)).toEqual([])
   })
 })

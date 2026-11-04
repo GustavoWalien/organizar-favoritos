@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { chromeBookmarksApi } from '../../chrome/bookmarksApi'
 import { hasLinkCheckPermission, requestLinkCheckPermission } from '../../chrome/permissions'
 import { findEmptyFolders, findTrash } from '../../core/cleanup'
@@ -18,7 +18,7 @@ import DuplicateGroups from '../components/DuplicateGroups'
 import LinkReviewList, { REASON_LABEL } from '../components/LinkReviewList'
 import { applyKeep, groupKey, trashIds, type KeepOverrides } from '../duplicateChoice'
 import { ageLabel } from '../format'
-import { clear, filterByReason, selectAll, toggleOne, type Candidate, type Reason } from '../selection'
+import { clear, filterByReason, selectAll, toggleOne, visibleSelection, type Candidate, type Reason } from '../selection'
 
 const PAGE = 200
 const TABS: CleanupTab[] = ['sem-uso', 'duplicados', 'quebrados', 'pastas-vazias']
@@ -30,11 +30,15 @@ const POLICIES: { value: KeepPolicy; label: string }[] = [
 ]
 
 interface Props {
+  /** Árvore do painel (relida a cada mudança nos favoritos, inclusive Desfazer e mudanças por fora). */
+  tree: BmNode[]
   tab?: CleanupTab
   prefs: CleanupPrefs
   linkCheck: LinkCheckRecord | null
-  /** Muda a cada pedido de "Testar agora" vindo de fora (dashboard); a permissão já foi pedida no clique. */
-  autoTestToken: number
+  /** Pedido de "Testar agora" vindo de fora (dashboard, paleta); a permissão já foi pedida no clique. */
+  autoTest: boolean
+  /** A Limpeza avisa que atendeu o pedido, para ele não se repetir ao voltar à tela. */
+  onAutoTestDone: () => void
   onTab: (tab: CleanupTab) => void
   onPrefs: (patch: Partial<CleanupPrefs>) => Promise<void>
   onLinkCheck: (rec: LinkCheckRecord) => Promise<void>
@@ -53,8 +57,7 @@ function brokenCandidates(links: FlatLink[], rec: LinkCheckRecord | null): Candi
   return fromLinkStatuses(links, statuses)
 }
 
-export default function CleanupView({ tab: routeTab, prefs, linkCheck, autoTestToken, onTab, onPrefs, onLinkCheck, onNotify }: Props) {
-  const [tree, setTree] = useState<BmNode[] | null>(null)
+export default function CleanupView({ tree, tab: routeTab, prefs, linkCheck, autoTest, onAutoTestDone, onTab, onPrefs, onLinkCheck, onNotify }: Props) {
   const [overrides, setOverrides] = useState<KeepOverrides>(new Map())
   const [included, setIncluded] = useState<Set<string> | null>(null)
   const [selected, setSelected] = useState<Set<string>>(clear())
@@ -65,24 +68,23 @@ export default function CleanupView({ tab: routeTab, prefs, linkCheck, autoTestT
   const [busy, setBusy] = useState(false)
   const abort = useRef<AbortController | null>(null)
 
-  /** Lê a árvore de novo. Toda ação que altera favoritos parte daqui, não do estado antigo. */
-  const reload = useCallback(async () => {
-    const fresh = await chromeBookmarksApi.getTree()
-    setTree(fresh)
+  // Árvore nova (aplicar, Desfazer, mudança por fora): a análise recomeça e as escolhas antigas caem.
+  useEffect(() => {
     setOverrides(new Map())
     setIncluded(null)
-    return fresh
-  }, [])
-  useEffect(() => { void reload() }, [reload])
+    setSelected(clear())
+  }, [tree])
+  // Limiar novo muda a lista de sem uso: a seleção antiga não vale mais.
+  useEffect(() => { setSelected(clear()) }, [prefs.inactiveDays])
 
   // As análises locais rodam sozinhas a cada leitura e a cada troca de preferência.
-  const links = useMemo(() => (tree ? linksOf(tree) : []), [tree])
+  const links = useMemo(() => linksOf(tree), [tree])
   const inactive = useMemo(() => fromInactive(findInactive(links, Date.now(), prefs.inactiveDays)), [links, prefs.inactiveDays])
   const baseGroups = useMemo(() => findDuplicates(links, prefs.keepPolicy), [links, prefs.keepPolicy])
   const groups: DuplicateGroup[] = useMemo(() => applyKeep(baseGroups, overrides), [baseGroups, overrides])
   const groupIncluded = useMemo(() => included ?? new Set(groups.map(groupKey)), [included, groups])
   const broken = useMemo(() => brokenCandidates(links, linkCheck), [links, linkCheck])
-  const empties = useMemo(() => (tree ? fromEmptyFolders(findEmptyFolders(tree)) : []), [tree])
+  const empties = useMemo(() => fromEmptyFolders(findEmptyFolders(tree)), [tree])
 
   const counts: Record<CleanupTab, number> = {
     'sem-uso': inactive.length,
@@ -90,7 +92,9 @@ export default function CleanupView({ tab: routeTab, prefs, linkCheck, autoTestT
     quebrados: broken.filter((c) => c.reasons.includes('quebrado')).length,
     'pastas-vazias': empties.length,
   }
-  const tab: CleanupTab = routeTab ?? TABS.find((t) => counts[t] > 0) ?? 'sem-uso'
+  // Sem aba na rota: escolhe a primeira com itens uma vez só, para a aba não pular depois de aplicar.
+  const [autoTab] = useState<CleanupTab>(() => TABS.find((t) => counts[t] > 0) ?? 'sem-uso')
+  const tab: CleanupTab = routeTab ?? autoTab
 
   const switchTab = (t: CleanupTab) => {
     setSelected(clear())
@@ -118,7 +122,7 @@ export default function CleanupView({ tab: routeTab, prefs, linkCheck, autoTestT
       setMessage('Sem a permissão de acesso aos sites não dá para testar os links.')
       return
     }
-    const fresh = linksOf(await reload())
+    const fresh = linksOf(await chromeBookmarksApi.getTree())
     abort.current = new AbortController()
     const statuses = await checkLinks(fresh.map((l) => l.url), {
       signal: abort.current.signal,
@@ -129,25 +133,26 @@ export default function CleanupView({ tab: routeTab, prefs, linkCheck, autoTestT
     setMessage(aborted ? `Teste cancelado: ${statuses.size} links verificados (resultado parcial guardado).` : `Teste concluído: ${statuses.size} links verificados.`)
   })
 
-  // "Testar agora" vindo do dashboard: roda uma vez por pedido, quando a árvore já chegou.
-  const lastToken = useRef(0)
+  // "Testar agora" vindo de fora: roda uma vez e avisa o painel, que apaga o pedido.
   useEffect(() => {
-    if (!tree || autoTestToken === 0 || autoTestToken === lastToken.current) return
-    lastToken.current = autoTestToken
+    if (!autoTest) return
+    onAutoTestDone()
     void testLinks(false)
-  }, [tree, autoTestToken])
+  }, [autoTest])
 
-  const toMove = tab === 'duplicados' ? trashIds(groups, groupIncluded) : [...selected]
+  // Sair da tela cancela um teste em andamento.
+  useEffect(() => () => abort.current?.abort(), [])
+
+  const list: Candidate[] = tab === 'sem-uso' ? inactive : tab === 'quebrados' ? broken : tab === 'pastas-vazias' ? empties : []
+  const toMove = tab === 'duplicados' ? trashIds(groups, groupIncluded) : visibleSelection(selected, list)
 
   const apply = () => guard(async () => {
     const { plan, moves, blocked } = await prepareCleanup(chromeBookmarksApi, toMove, 'Limpeza de favoritos')
     if (blocked) { setMessage(blocked); return }
-    if (moves === 0) { setMessage('Nada para mover: os itens marcados mudaram desde a análise.'); await reload(); return }
+    if (moves === 0) { setMessage('Nada para mover: os itens marcados mudaram desde a análise.'); return }
     if (!window.confirm(`Mover ${moves} ${moves === 1 ? 'item' : 'itens'} para a Lixeira?\n\nUm backup é feito antes e dá para desfazer.`)) return
     const r = await runPlan(plan, chromeBookmarksApi, Date.now())
     const failedIds = new Set(r.failed.flatMap((f) => (f.op.op === 'move' ? [f.op.id] : [])))
-    await reload()
-    setSelected(new Set(failedIds))
     const moved = moves - failedIds.size
     setMessage(null)
     onNotify(
@@ -159,9 +164,6 @@ export default function CleanupView({ tab: routeTab, prefs, linkCheck, autoTestT
     )
   })
 
-  if (!tree) return <p className="loading">Lendo favoritos…</p>
-
-  const list: Candidate[] = tab === 'sem-uso' ? inactive : tab === 'quebrados' ? broken : tab === 'pastas-vazias' ? empties : []
   const visible = filterByReason(list, filter)
   const dupKept = groups.filter((g) => groupIncluded.has(groupKey(g))).length
 
@@ -210,7 +212,7 @@ export default function CleanupView({ tab: routeTab, prefs, linkCheck, autoTestT
           <>
             <div className="toolbar">
               <label>Manter qual cópia{' '}
-                <select value={prefs.keepPolicy} onChange={(e) => { setOverrides(new Map()); void onPrefs({ keepPolicy: e.target.value as KeepPolicy }) }} disabled={busy}>
+                <select value={prefs.keepPolicy} onChange={(e) => { void onPrefs({ keepPolicy: e.target.value as KeepPolicy }) }} disabled={busy}>
                   {POLICIES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
               </label>

@@ -39,3 +39,8 @@ export function mergeCandidates(parts: Candidate[]): Candidate[] {
   }
   return [...byId.values()]
 }
+
+/** Os marcados que ainda estão na lista mostrada. O que saiu da lista (limiar novo, outra aba, árvore nova) não vai junto. */
+export function visibleSelection(selected: Set<string>, list: Candidate[]): string[] {
+  return list.filter((c) => selected.has(c.id)).map((c) => c.id)
+}

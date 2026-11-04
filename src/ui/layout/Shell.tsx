@@ -29,7 +29,7 @@ export default function Shell() {
 
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [moveIds, setMoveIds] = useState<string[] | null>(null)
-  const [autoTestToken, setAutoTestToken] = useState(0)
+  const [autoTest, setAutoTest] = useState(false)
 
   const tree = lib.tree
   const allLinks = useMemo(() => (tree ? flattenLinks(tree, findTrash(tree)?.id) : []), [tree])
@@ -77,7 +77,7 @@ export default function Shell() {
   const startLinkCheck = () => {
     requestLinkCheckPermission().then((ok) => {
       if (!ok) { lib.notify('Sem a permissão de acesso aos sites não dá para testar os links'); return }
-      setAutoTestToken((n) => n + 1)
+      setAutoTest(true)
       setView({ name: 'cleanup', tab: 'quebrados' })
     }, (e) => lib.notify(`Erro: ${e instanceof Error ? e.message : String(e)}`))
   }
@@ -124,7 +124,9 @@ export default function Shell() {
         tab={view.tab}
         prefs={dash.prefs}
         linkCheck={dash.linkCheck}
-        autoTestToken={autoTestToken}
+        tree={tree}
+        autoTest={autoTest}
+        onAutoTestDone={() => setAutoTest(false)}
         onTab={(tab) => setView({ name: 'cleanup', tab })}
         onPrefs={dash.setPrefs}
         onLinkCheck={dash.setLinkCheck}
