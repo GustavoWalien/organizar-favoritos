@@ -1,6 +1,9 @@
 import { normalizeUrl } from './url'
 import type { FlatLink } from './types'
 
+/** Qual cópia fica num grupo de duplicados (seção 5.6 do design do redesenho). */
+export type KeepPolicy = 'antiga' | 'especifica' | 'usada'
+
 export interface DuplicateGroup {
   keep: FlatLink
   extras: FlatLink[]
