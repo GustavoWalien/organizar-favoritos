@@ -12,12 +12,14 @@ export type View =
   | { name: 'organize' }
   | { name: 'backups' }
   | { name: 'trash' }
+  | { name: 'ai' }
 
 const SIMPLE = {
   'sem-categoria': 'uncategorized',
   organizar: 'organize',
   backups: 'backups',
   lixeira: 'trash',
+  ia: 'ai',
 } as const
 
 /** Endereço (`#/…`) de uma vista. A rota diz só a tela e a aba, nunca uma ação. */
@@ -30,6 +32,7 @@ export function formatRoute(view: View): string {
     case 'organize': return '#/organizar'
     case 'backups': return '#/backups'
     case 'trash': return '#/lixeira'
+    case 'ai': return '#/ia'
   }
 }
 

@@ -16,7 +16,7 @@ const STEP_VIEW: Record<Exclude<NextStep['id'], 'backup'>, View> = {
   'testar-links': { name: 'cleanup', tab: 'quebrados' },
   quebrados: { name: 'cleanup', tab: 'quebrados' },
   'sem-uso': { name: 'cleanup', tab: 'sem-uso' },
-  'sem-categoria': { name: 'uncategorized' },
+  'sem-categoria': { name: 'ai' },
 }
 
 /** Abre o painel numa aba nova, já na tela pedida, e fecha o popup. */

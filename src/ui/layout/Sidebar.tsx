@@ -121,11 +121,7 @@ export default function Sidebar({ folders, view, dashboard, lastBackupAt, onNavi
           dashboard.review > 0 && <span className="badge" aria-label={`${dashboard.review} a revisar`}>{dashboard.review}</span>)}
         {item('organize', 'list', 'Organizar', { name: 'organize' },
           dashboard.uncategorized > 0 && <span className="count">{dashboard.uncategorized} soltos</span>)}
-        <button className="nav-item" disabled title="Sugestões da IA: disponível quando a IA for implementada">
-          <Icon name="sparkle" />
-          <span className="nav-label">Sugestões da IA</span>
-          <span className="pill">breve</span>
-        </button>
+        {item('ai', 'sparkle', 'Sugestões da IA', { name: 'ai' })}
       </nav>
 
       <div className="section-title">

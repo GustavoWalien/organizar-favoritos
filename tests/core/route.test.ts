@@ -15,6 +15,7 @@ describe('rota no #', () => {
       { name: 'organize' },
       { name: 'backups' },
       { name: 'trash' },
+      { name: 'ai' },
     ]
     for (const v of views) expect(parseRoute(formatRoute(v)), JSON.stringify(v)).toEqual(v)
   })
@@ -28,6 +29,7 @@ describe('rota no #', () => {
     expect(formatRoute({ name: 'organize' })).toBe('#/organizar')
     expect(formatRoute({ name: 'backups' })).toBe('#/backups')
     expect(formatRoute({ name: 'trash' })).toBe('#/lixeira')
+    expect(formatRoute({ name: 'ai' })).toBe('#/ia')
   })
 
   it('endereço desconhecido ou malformado cai na Visão geral', () => {

@@ -24,7 +24,7 @@ const STEP_TARGET: Partial<Record<StepId, View>> = {
   duplicados: { name: 'cleanup', tab: 'duplicados' },
   quebrados: { name: 'cleanup', tab: 'quebrados' },
   'sem-uso': { name: 'cleanup', tab: 'sem-uso' },
-  'sem-categoria': { name: 'uncategorized' },
+  'sem-categoria': { name: 'ai' },
 }
 
 export default function OverviewView({ dashboard: d, steps, recent, lastBackupAt, busy, onNavigate, onTestLinks, onBackup, onUndo }: Props) {
@@ -59,7 +59,7 @@ export default function OverviewView({ dashboard: d, steps, recent, lastBackupAt
             {' · '}{last ? <>último plano: “{last.label}” <button className="link-button" onClick={() => onUndo(last.planId)} disabled={busy}>Desfazer</button></> : 'nada pendente para desfazer'}
           </p>
         </div>
-        <button className="primary big" disabled title="Disponível quando a IA for implementada"><Icon name="sparkle" /> Sugerir pastas com IA · em breve</button>
+        <button className="primary big" onClick={() => onNavigate({ name: 'ai' })}><Icon name="sparkle" /> Sugerir pastas com IA</button>
       </div>
 
       <div className="dash-row kpis">

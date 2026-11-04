@@ -10,7 +10,7 @@ describe('stepText', () => {
     expect(stepText({ id: 'quebrados', count: 1, done: false }).title).toBe('Revisar 1 link quebrado')
     expect(stepText({ id: 'sem-uso', count: 214, done: false }).title).toBe('Revisar 214 favoritos sem uso')
     expect(stepText({ id: 'sem-uso', count: 1, done: false }).title).toBe('Revisar 1 favorito sem uso')
-    expect(stepText({ id: 'sem-categoria', count: 154, done: false })).toMatchObject({ title: 'Dar pasta a 154 favoritos sem categoria', action: 'Abrir' })
+    expect(stepText({ id: 'sem-categoria', count: 154, done: false })).toMatchObject({ title: 'Dar pasta a 154 favoritos sem categoria', action: 'Sugerir com IA' })
     expect(stepText({ id: 'backup', count: 0, done: false })).toMatchObject({ title: 'Fazer um backup', action: 'Fazer backup' })
     expect(stepText({ id: 'backup', count: 0, done: true }).title).toBe('Backup em dia')
     expect(stepText({ id: 'duplicados', count: 0, done: true }).title).toBe('Nenhum duplicado')

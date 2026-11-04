@@ -12,6 +12,8 @@ import { makeBackup } from '../backupActions'
 import { useLibrary } from '../state/useLibrary'
 import { useRoute } from '../state/useRoute'
 import { useDashboard } from '../state/useDashboard'
+import { useAiSuggestions } from '../state/useAiSuggestions'
+import AiView from '../views/AiView'
 import BackupsView from '../views/BackupsView'
 import CleanupView from '../views/CleanupView'
 import OrganizeView from '../views/OrganizeView'
@@ -35,6 +37,7 @@ export default function Shell() {
   const allLinks = useMemo(() => (tree ? flattenLinks(tree, findTrash(tree)?.id) : []), [tree])
 
   const dash = useDashboard(tree)
+  const ai = useAiSuggestions(tree, lib.marks)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -135,6 +138,8 @@ export default function Shell() {
     )
   } else if (view.name === 'organize') {
     content = <OrganizeView tree={tree} marks={lib.marks} folderOptions={options} busy={lib.busy} onMove={lib.move} onSetProtected={lib.setProtected} onNotify={lib.notify} onChanged={lib.reload} />
+  } else if (view.name === 'ai') {
+    content = <AiView tree={tree} marks={lib.marks} ai={ai} onNotify={lib.notify} />
   } else if (view.name === 'backups') {
     content = <BackupsView tree={tree} lastExportAt={dash.lastExportAt} onChanged={() => { void dash.refresh() }} />
   } else {
