@@ -60,6 +60,11 @@ export function folderPath(root: BmNode[], folderId: string): string[] {
   return walk(root, [], true) ?? []
 }
 
+/** Ids das pastas que têm subpastas (as que a árvore lateral pode expandir), em qualquer nível. */
+export function expandableIds(nodes: FolderNode[]): string[] {
+  return nodes.flatMap((n) => (n.children.length > 0 ? [n.id, ...expandableIds(n.children)] : []))
+}
+
 export function findFolderNode(nodes: FolderNode[], id: string): FolderNode | undefined {
   for (const n of nodes) {
     if (n.id === id) return n

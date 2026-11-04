@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { TRASH_TITLE } from '../../src/core/cleanup'
-import { buildFolderTree, directLinks, findFolderNode, folderOptions, folderPath, linksInSubfolders, sidebarFolders, uncategorizedLinks } from '../../src/core/folders'
+import { buildFolderTree, directLinks, expandableIds, findFolderNode, folderOptions, folderPath, linksInSubfolders, sidebarFolders, uncategorizedLinks } from '../../src/core/folders'
 import type { BmFolder, BmLink, BmNode } from '../../src/core/types'
 
 const lnk = (id: string, parentId: string): BmLink => ({ kind: 'link', id, parentId, title: `L${id}`, url: `https://${id}.com/`, dateAdded: 1 })
@@ -102,5 +102,16 @@ describe('folders', () => {
 
   it('linksInSubfolders ignora ids de pastas e ids que não existem', () => {
     expect(linksInSubfolders(tree(), ['10', '999', 'c'])).toEqual(['c'])
+  })
+})
+
+describe('expandableIds', () => {
+  it('ids de todas as pastas da árvore lateral que têm subpastas, em qualquer nível', () => {
+    expect(expandableIds(sidebarFolders(tree()))).toEqual(['10'])
+    const deep = sidebarFolders([dir('0', '', '', [dir('1', '0', 'Barra', [dir('5', '1', 'A', [dir('6', '5', 'B', [dir('7', '6', 'C')])])])])])
+    expect(expandableIds(deep)).toEqual(['5', '6'])
+  })
+  it('árvore sem subpastas: vazio', () => {
+    expect(expandableIds([])).toEqual([])
   })
 })

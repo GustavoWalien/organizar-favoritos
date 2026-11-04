@@ -1,6 +1,6 @@
 import { useState, type DragEvent } from 'react'
 import { decodeDrag, DRAG_MIME } from '../../core/dragPayload'
-import type { FolderNode } from '../../core/folders'
+import { expandableIds, type FolderNode } from '../../core/folders'
 import type { View } from '../../core/route'
 
 export type DropTarget = { kind: 'folder'; id: string } | { kind: 'uncategorized' } | { kind: 'trash' }
@@ -71,6 +71,8 @@ function TreeItem({ node, depth, view, expanded, toggle, onNavigate, dropKey, dr
 export default function Sidebar({ folders, view, uncategorizedCount, trashCount, cleanupCount, lockedFolderIds, onToggleFolderLock, onNavigate, onNewFolder, onDropLinks }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [dropKey, setDropKey] = useState<string | null>(null)
+  const allIds = expandableIds(folders)
+  const allOpen = allIds.every((id) => expanded.has(id))
   const toggle = (id: string) => setExpanded((s) => {
     const next = new Set(s)
     if (!next.delete(id)) next.add(id)
@@ -114,7 +116,11 @@ export default function Sidebar({ folders, view, uncategorizedCount, trashCount,
       </nav>
       <div className="section-title">
         <span>Pastas</span>
-        <button className="link-button" onClick={onNewFolder}>+ nova</button>
+        <span className="section-actions">
+          <button className="link-button" onClick={() => setExpanded(new Set(expandableIds(folders)))} disabled={allIds.length === 0 || allOpen} title="Expandir todas as pastas" aria-label="Expandir todas as pastas">expandir</button>
+          <button className="link-button" onClick={() => setExpanded(new Set())} disabled={expanded.size === 0} title="Recolher todas as pastas" aria-label="Recolher todas as pastas">recolher</button>
+          <button className="link-button" onClick={onNewFolder}>+ nova</button>
+        </span>
       </div>
       <nav>
         {folders.map((f) => (

@@ -56,7 +56,9 @@ dd { margin: 0; font-weight: 600; }
 
 .sidebar { background: var(--sidebar); border-right: 1px solid var(--border); padding: 16px 10px; position: sticky; top: 0; height: 100vh; overflow-y: auto; box-sizing: border-box; }
 .brand { font-weight: 700; font-size: 14px; padding: 0 10px 14px; }
-.section-title { display: flex; justify-content: space-between; align-items: center; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-tertiary); padding: 16px 10px 6px; }
+.section-title { display: flex; gap: 8px; justify-content: space-between; align-items: center; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-tertiary); padding: 16px 10px 6px; }
+.section-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 10px; }
+.link-button:disabled { color: var(--text-tertiary); cursor: default; }
 .link-button { background: none; border: 0; padding: 0; color: var(--link); text-transform: none; letter-spacing: 0; font-size: 12px; }
 .nav-item { display: flex; justify-content: space-between; gap: 8px; width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: 6px 10px; color: var(--text-secondary); }
 .nav-item:hover:not(:disabled) { background: var(--surface); }
