@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { renameNewFolder } from '../../ai/applyPlan'
 import { generateProposal, type GenerateProgress } from '../../ai/generate'
-import { errorMessage, makeProvider, providerOrigin } from '../../ai/provider'
+import { configProblem, errorMessage, makeProvider, providerOrigin } from '../../ai/provider'
 import type { AiScope } from '../../ai/scope'
 import { requestOriginPermission } from '../../chrome/permissions'
 import type { MarksMap } from '../../core/marks'
@@ -44,6 +44,8 @@ export function useAiSuggestions(tree: BmNode[] | null, marks: MarksMap): AiSugg
 
   const testProvider = useCallback(async (cfg: ProviderConfig) => {
     setError(null)
+    const problem = configProblem(cfg)
+    if (problem) { setError(problem); return false }
     // O pedido de permissão precisa vir direto do clique, antes de qualquer outra espera.
     const granted = await requestOriginPermission(providerOrigin(cfg)).catch(() => false)
     if (!granted) {

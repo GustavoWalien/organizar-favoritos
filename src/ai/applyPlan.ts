@@ -1,3 +1,4 @@
+import { findTrash } from '../core/cleanup'
 import { folderPath } from '../core/folders'
 import { isProtectedEffective, type MarksMap } from '../core/marks'
 import { newPlanId } from '../core/plan'
@@ -21,6 +22,15 @@ export function newFolderKey(folderId: string, newPath: string[]): string {
 
 const isFolderId = (tree: BmNode[], id: string) => findNode(tree, id)?.kind === 'folder'
 
+/** Ids da Lixeira da extensão e de tudo dentro dela. */
+function trashIds(tree: BmNode[]): Set<string> {
+  const out = new Set<string>()
+  const add = (n: BmNode) => { out.add(n.id); if (n.kind === 'folder') n.children.forEach(add) }
+  const t = findTrash(tree)
+  if (t) add(t)
+  return out
+}
+
 /**
  * Plano com os itens aceitos (seção 4.4 do design). Relê a árvore e as marcas de agora: item que
  * sumiu, mudou de pasta ou ganhou "não mexer", e destino que sumiu ou ganhou "não mexer", ficam de fora.
@@ -31,6 +41,7 @@ export function planFromProposal(p: Proposal, tree: BmNode[], marks: MarksMap, _
   let moves = 0
   let changed = 0
   let temps = 0
+  const inTrash = trashIds(tree)
 
   const ensureFolder = (folderId: string, path: string[]): string => {
     let parent = folderId
@@ -53,7 +64,8 @@ export function planFromProposal(p: Proposal, tree: BmNode[], marks: MarksMap, _
     const stale =
       !node || node.kind !== 'link' || node.parentId !== it.fromFolderId ||
       isProtectedEffective(tree, marks, it.itemId).protected ||
-      !isFolderId(tree, it.folderId) || isProtectedEffective(tree, marks, it.folderId).protected
+      !isFolderId(tree, it.folderId) || inTrash.has(it.folderId) || inTrash.has(it.itemId) ||
+      isProtectedEffective(tree, marks, it.folderId).protected
     if (stale) { changed++; continue }
     if (it.newPath.length === 0 && node.parentId === it.folderId) continue
     const target = it.newPath.length === 0 ? it.folderId : ensureFolder(it.folderId, it.newPath)
@@ -80,7 +92,7 @@ export function renameNewFolder(p: Proposal, folderId: string, oldPath: string[]
   if (renamed.length === 1) {
     const parent = findNode(tree, folderId)
     const sibling = parent?.kind === 'folder'
-      ? parent.children.find((c) => c.kind === 'folder' && normalizeText(c.title) === normalizeText(name))
+      ? parent.children.find((c) => c.kind === 'folder' && c.id !== findTrash(tree)?.id && normalizeText(c.title) === normalizeText(name))
       : undefined
     if (sibling) target = { folderId: sibling.id, newPath: [] }
   }

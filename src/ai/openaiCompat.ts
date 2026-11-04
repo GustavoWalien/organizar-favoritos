@@ -6,18 +6,22 @@ type CompatConfig = Extract<ProviderConfig, { kind: 'openai-compat' }>
 
 const RETRIES = 2
 
+const MAX_WAIT_MS = 60_000
+
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal.aborted) { reject(signal.reason); return }
-    const t = setTimeout(resolve, ms)
-    signal.addEventListener('abort', () => { clearTimeout(t); reject(signal.reason) }, { once: true })
+    const onAbort = () => { clearTimeout(t); reject(signal.reason) }
+    const t = setTimeout(() => { signal.removeEventListener('abort', onAbort); resolve() }, ms)
+    signal.addEventListener('abort', onAbort, { once: true })
   })
 }
 
-/** Espera pedida pelo provedor (`retry-after`, em segundos) ou recuo de 1 s, 2 s. */
-function waitMs(res: Response, attempt: number): number {
-  const ra = Number(res.headers.get('retry-after'))
-  return Number.isFinite(ra) && ra >= 0 ? ra * 1000 : 1000 * 2 ** attempt
+/** Espera pedida pelo provedor (`retry-after`, em segundos, com teto de 60 s) ou recuo de 1 s, 2 s. */
+export function waitMs(res: Response, attempt: number): number {
+  const h = res.headers.get('retry-after')
+  const ra = h === null || h.trim() === '' ? NaN : Number(h)
+  return Number.isFinite(ra) && ra >= 0 ? Math.min(ra * 1000, MAX_WAIT_MS) : 1000 * 2 ** attempt
 }
 
 /** Adaptador para APIs compatíveis com OpenAI (OpenAI, Gemini, Groq, OpenRouter, Ollama), via `fetch`. */
@@ -41,8 +45,8 @@ export function openaiCompatProvider(cfg: CompatConfig, fetchFn: typeof fetch = 
     }
   }
 
-  const call = async (system: string, user: string, signal: AbortSignal): Promise<string> => {
-    const base = { model: cfg.model, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }
+  const call = async (system: string, context: string, user: string, signal: AbortSignal): Promise<string> => {
+    const base = { model: cfg.model, messages: [{ role: 'system', content: `${system}\n\n${context}` }, { role: 'user', content: user }] }
     let res = await post({ ...base, response_format: { type: 'json_schema', json_schema: { name: 'sugestoes', schema: RESPONSE_SCHEMA, strict: true } } }, signal)
     // Provedor que não aceita json_schema: tenta uma vez com json_object.
     if (res.status === 400) res = await post({ ...base, response_format: { type: 'json_object' } }, signal)
@@ -61,7 +65,7 @@ export function openaiCompatProvider(cfg: CompatConfig, fetchFn: typeof fetch = 
   return {
     classify: call,
     test: async (signal) => {
-      await call('Responda só com {"itens": []}.', 'Teste de conexão.', signal)
+      await call('Responda só com JSON: {"itens": []}.', 'Sem candidatas.', 'Teste de conexão.', signal)
     },
   }
 }

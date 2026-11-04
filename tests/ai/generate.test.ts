@@ -17,8 +17,8 @@ const tree = (extra: BmNode[] = []): BmNode[] => [
 const fake = (answer: (user: string, n: number) => string | Error) => {
   const prompts: string[] = []
   const provider: Provider = {
-    classify: async (_s, user) => {
-      prompts.push(user)
+    classify: async (_s, ctx, user) => {
+      prompts.push(`${ctx}\n${user}`)
       const a = answer(user, prompts.length)
       if (a instanceof Error) throw a
       return a

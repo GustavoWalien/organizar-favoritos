@@ -52,3 +52,23 @@ describe('estimateCost', () => {
     expect(estimateCost('claude-opus-5-5', 0, 5)).toEqual({ batches: 0, usdMax: 0 })
   })
 })
+
+describe('formato pedido nas instruções (fallback json_object)', () => {
+  it('as instruções citam JSON e a chave "itens"', () => {
+    expect(SYSTEM_PROMPT).toContain('JSON')
+    expect(SYSTEM_PROMPT).toContain('"itens"')
+  })
+})
+
+describe('contexto separado para o cache', () => {
+  it('as candidatas originais ficam no contexto; o lote leva só as pastas novas e os itens', async () => {
+    const { contextPrompt, batchPrompt } = await import('../../src/ai/prompt')
+    const ctx = contextPrompt(cands)
+    expect(ctx).toContain('2: Barra › Dev › Tools')
+    const extra = [{ k: 3, folderId: '1', label: 'Barra › Finanças', segments: ['Barra', 'Finanças'], isRoot: false, newPath: ['Finanças'] }]
+    const b = batchPrompt(extra, makeBatches([item(7)])[0]!, { kind: 'sem-categoria', allowNew: true })
+    expect(b).toContain('3: Barra › Finanças')
+    expect(b).not.toContain('Barra › Dev › Tools')
+    expect(b).toContain('"d":"site7.example"')
+  })
+})

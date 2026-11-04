@@ -13,13 +13,42 @@ export class ProviderError extends Error {
 
 /** Um provedor de IA: devolve o texto JSON da resposta, que quem chama valida. */
 export interface Provider {
-  classify(system: string, user: string, signal: AbortSignal): Promise<string>
+  /** `context` se repete entre os lotes (o adaptador Anthropic o põe no cache de prompt). */
+  classify(system: string, context: string, user: string, signal: AbortSignal): Promise<string>
   /** Chamada mínima para conferir chave, modelo e acesso. */
   test(signal: AbortSignal): Promise<void>
 }
 
 export function makeProvider(cfg: ProviderConfig): Provider {
   return cfg.kind === 'anthropic' ? anthropicProvider(cfg) : openaiCompatProvider(cfg)
+}
+
+/** Problema na configuração antes de qualquer chamada (síncrono: pode rodar dentro do clique). */
+export function configProblem(cfg: ProviderConfig): string | null {
+  if (!cfg.model.trim()) return 'Informe o modelo.'
+  if (cfg.kind === 'anthropic') return cfg.apiKey ? null : 'Informe a chave de API.'
+  try {
+    const u = new URL(cfg.baseUrl)
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error()
+  } catch {
+    return 'URL base inválida: use o endereço completo, como https://api.openai.com/v1.'
+  }
+  return null
+}
+
+/**
+ * Chave para o rascunho: a digitada, ou a guardada só se for o mesmo tipo de provedor e, no compatível,
+ * a mesma origem. Assim a chave de um provedor nunca vai para outro host.
+ */
+export function keyForDraft(kind: ProviderConfig['kind'], baseUrl: string, typed: string, saved: ProviderConfig | null): string {
+  if (typed) return typed
+  if (!saved || saved.kind !== kind) return ''
+  if (saved.kind === 'anthropic') return saved.apiKey
+  try {
+    return new URL(baseUrl).origin === new URL(saved.baseUrl).origin ? saved.apiKey : ''
+  } catch {
+    return ''
+  }
 }
 
 /** Origem para pedir a permissão de host: `https://host/*`. */

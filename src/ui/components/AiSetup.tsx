@@ -5,6 +5,7 @@ import { buildScope, type AiScope, type ScopeKind } from '../../ai/scope'
 import { folderOptions } from '../../core/folders'
 import type { MarksMap } from '../../core/marks'
 import type { BmNode } from '../../core/types'
+import { keyForDraft } from '../../ai/provider'
 import { maskKey, type ProviderConfig } from '../../storage/aiStore'
 import type { AiSuggestionsState } from '../state/useAiSuggestions'
 
@@ -45,16 +46,18 @@ export default function AiSetup({ tree, marks, ai, initialKind = 'sem-categoria'
   const cost = estimateCost(saved?.model ?? model, toAi, sc.candidates.length)
 
   const draft = (): ProviderConfig => {
-    const keyToUse = apiKey || (saved && saved.kind === draftKind ? saved.apiKey : '')
+    const keyToUse = keyForDraft(draftKind, baseUrl, apiKey, saved)
     return draftKind === 'anthropic'
       ? { kind: 'anthropic', apiKey: keyToUse, model: MODELS.some((m) => m.id === model) ? model : 'claude-opus-5-5' }
       : { kind: 'openai-compat', baseUrl: baseUrl.trim(), apiKey: keyToUse, model: model.trim() }
   }
   const test = async () => {
     setTesting(true)
-    const ok = await ai.testProvider(draft())
-    setTesting(false)
-    if (ok) { setEditing(false); setApiKey('') }
+    try {
+      if (await ai.testProvider(draft())) { setEditing(false); setApiKey('') }
+    } finally {
+      setTesting(false)
+    }
   }
 
   const busy = ai.progress !== null
@@ -114,7 +117,7 @@ export default function AiSetup({ tree, marks, ai, initialKind = 'sem-categoria'
                 <label className="field">URL base<input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" /></label>
               )}
               <label className="field">Chave de API{draftKind === 'openai-compat' ? ' (opcional no Ollama)' : ''}
-                <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={saved?.apiKey && saved.kind === draftKind ? `guardada (${maskKey(saved.apiKey)})` : 'cole a chave aqui'} autoComplete="off" />
+                <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={keyForDraft(draftKind, baseUrl, '', saved) ? `guardada (${maskKey(saved!.apiKey)})` : 'cole a chave aqui'} autoComplete="off" />
               </label>
               <label className="field">Modelo
                 {draftKind === 'anthropic' ? (
@@ -124,7 +127,7 @@ export default function AiSetup({ tree, marks, ai, initialKind = 'sem-categoria'
                 )}
               </label>
               <div className="toolbar">
-                <button className="primary" onClick={() => { void test() }} disabled={testing || (!apiKey && !saved?.apiKey && draftKind === 'anthropic') || !model}>{testing ? 'Testando…' : 'Testar conexão'}</button>
+                <button className="primary" onClick={() => { void test() }} disabled={testing || !model}>{testing ? 'Testando…' : 'Testar conexão'}</button>
                 {saved && <button onClick={() => setEditing(false)}>Cancelar</button>}
               </div>
               <p className="muted small">A chave fica só neste navegador. A assinatura do ChatGPT ou do Claude não serve: é preciso uma chave de API do console do provedor.</p>

@@ -15,6 +15,9 @@ export const SYSTEM_PROMPT = [
   '- "motivo" tem no máximo 6 palavras.',
   '- "confianca" é "alta", "media" ou "baixa"; use "baixa" quando o título for vago ou genérico.',
   '- Responda um item para cada favorito, usando o mesmo "i".',
+  '',
+  'Responda só com JSON, sem texto antes ou depois, no formato:',
+  '{"itens":[{"i":0,"pasta":3,"nova":"","confianca":"alta","motivo":"ferramenta de dev"}]}',
 ].join('\n')
 
 export interface BatchItem { i: number; t: string; d: string }
@@ -36,21 +39,30 @@ export function makeBatches(items: ScopeItem[], size = BATCH_SIZE): Batch[] {
   return out
 }
 
-/** Mensagem do usuário de um lote: candidatas numeradas, regra de pastas novas e os itens em JSON. */
-export function userPrompt(candidates: Candidate[], batch: Batch, scope: AiScope): string {
-  const lines = candidates.map((c) => `${c.k}: ${c.label}${c.isRoot ? ' (raiz)' : ''}`)
+const line = (c: Candidate) => `${c.k}: ${c.label}${c.isRoot ? ' (raiz)' : ''}`
+
+/** Parte fixa entre os lotes (vai com cache de prompt): as candidatas originais, numeradas. */
+export function contextPrompt(candidates: Candidate[]): string {
+  return ['Pastas candidatas:', ...candidates.map(line)].join('\n')
+}
+
+/** Parte de cada lote: pastas novas de lotes anteriores (com número), regra de pastas novas e os itens. */
+export function batchPrompt(newCandidates: Candidate[], batch: Batch, scope: AiScope): string {
   const rule = scope.allowNew
     ? 'Você pode criar pastas novas (até 2 níveis abaixo de uma candidata).'
     : 'Não crie pastas novas: use só as candidatas que não são raiz, e deixe "nova" vazio.'
   return [
-    'Pastas candidatas:',
-    ...lines,
-    '',
+    ...(newCandidates.length ? ['Pastas novas já propostas (também são candidatas):', ...newCandidates.map(line), ''] : []),
     rule,
     '',
     'Favoritos:',
     JSON.stringify(batch.items),
   ].join('\n')
+}
+
+/** Contexto e lote juntos (provedores sem cache separado e testes). */
+export function userPrompt(candidates: Candidate[], batch: Batch, scope: AiScope): string {
+  return `${contextPrompt(candidates)}\n\n${batchPrompt([], batch, scope)}`
 }
 
 /** Esquema da resposta (seção 6.2 do design). */

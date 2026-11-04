@@ -2,7 +2,7 @@ import type { MarksMap } from '../core/marks'
 import type { BmNode } from '../core/types'
 import type { Proposal, ProposalItem, ProviderConfig } from '../storage/aiStore'
 import { applyDomainRule } from './domainRule'
-import { makeBatches, SYSTEM_PROMPT, userPrompt } from './prompt'
+import { batchPrompt, contextPrompt, makeBatches, SYSTEM_PROMPT } from './prompt'
 import { ProviderError, type Provider } from './provider'
 import { buildScope, type AiScope, type Candidate } from './scope'
 import { InvalidResponseError, validateResponse, type Validated } from './validate'
@@ -53,13 +53,14 @@ export async function generateProposal(args: {
   let failedBatches = 0
   let missing = 0
 
+  const context = contextPrompt(sc.candidates)
   const ask = async (b: (typeof batches)[number]): Promise<Validated> => {
-    const user = userPrompt(candidates, b, scope)
+    const user = batchPrompt(candidates.slice(sc.candidates.length), b, scope)
     try {
-      return validateResponse(await provider.classify(SYSTEM_PROMPT, user, signal), b, candidates, scope.allowNew, tree)
+      return validateResponse(await provider.classify(SYSTEM_PROMPT, context, user, signal), b, candidates, scope.allowNew, tree)
     } catch (e) {
       if (!(e instanceof InvalidResponseError)) throw e
-      return validateResponse(await provider.classify(SYSTEM_PROMPT, user, signal), b, candidates, scope.allowNew, tree)
+      return validateResponse(await provider.classify(SYSTEM_PROMPT, context, user, signal), b, candidates, scope.allowNew, tree)
     }
   }
 

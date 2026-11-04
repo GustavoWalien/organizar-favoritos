@@ -28,3 +28,19 @@ Pontos levantados durante os testes manuais. Ficam aqui até serem priorizados e
 | 11 | Backups | "Achar um favorito apagado" trata o que está na Lixeira como "ainda existe"; e exportar sem sucesso não mostra mensagem. | Revisão final |
 | 12 | Rotas | `#/xyz` não é corrigido na barra de endereço; `#/pasta/<id da Lixeira>` abre a Lixeira como pasta comum. | Revisão final |
 | 13 | Popup | Com zero favoritos, "Testar os links" aparece como próximo passo. | Revisão final |
+
+## Do marco 4, IA (revisão final, 2026-11-04)
+
+| # | Área | Ponto | Origem |
+|---|---|---|---|
+| 14 | IA | Cancelar antes do primeiro resultado abre uma revisão vazia ("0 de 0"); melhor voltar à configuração. | Revisão final |
+| 15 | IA | A mensagem de erro de uma geração anterior continua na tela depois de aplicar ou descartar. | Revisão final |
+| 16 | IA | A tela de configuração pode abrir o formulário mesmo com provedor guardado, se ele carregar depois da tela (corrida rara). | Revisão final |
+| 17 | IA | O aviso de aplicação conta os planejados, não os aplicados; e a proposta é descartada mesmo se tudo falhar. | Revisão final |
+| 18 | IA | Barra ou Outros marcadas "não mexer" ainda entram como pai de pasta nova (a aplicação barra depois, com mensagem confusa). | Revisão final |
+| 19 | Desempenho | A proteção "não mexer" é recalculada por item percorrendo a árvore toda (O(N²)); com ~10 mil favoritos a tela da IA pode pesar. | Revisão final |
+| 20 | IA | Se a IA sugere uma subpasta com o nome de uma existente que está protegida, cria-se uma segunda pasta de mesmo nome ao lado. | Revisão final |
+| 21 | IA | Nos limites de uso (429/5xx), a tela não diz "tentando de novo em X s"; o progresso só fica parado. | Revisão final |
+| 22 | Docs | A seção 6.2 do design da IA ainda descreve `pasta` como texto e `nova` como booleano (a 5.3 e o código usam número e texto). | Revisão final |
+| 23 | Privacidade | O SDK da Anthropic manda cabeçalhos técnicos (`X-Stainless-*`: sistema, versão do runtime). Não são dados seus, mas vale citar no README ou desligar. | Revisão final |
+| 24 | IA | Muitos favoritos sem título vão para a IA só com o domínio; a sugestão para eles tende a ser fraca. | Teste no Chromium |

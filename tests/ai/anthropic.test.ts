@@ -16,19 +16,19 @@ const signal = new AbortController().signal
 describe('anthropicProvider', () => {
   it('monta o pedido e devolve o texto', async () => {
     const { client, calls } = fakeClient(() => ok('{"itens":[]}'))
-    const text = await anthropicProvider(cfg, client).classify('SIS', 'USR', signal)
+    const text = await anthropicProvider(cfg, client).classify('SIS', 'CTX', 'USR', signal)
     expect(text).toBe('{"itens":[]}')
     const req = calls[0]!
-    expect(req).toMatchObject({ model: 'claude-opus-5-5', max_tokens: 8000, fallbacks: 'default', betas: ['server-side-fallback-2026-07-01'] })
+    expect(req).toMatchObject({ model: 'claude-opus-5-5', max_tokens: 16000, fallbacks: 'default', betas: ['server-side-fallback-2026-07-01'] })
     expect(req.output_config).toMatchObject({ effort: 'low', format: { type: 'json_schema' } })
-    expect(req.system).toEqual([{ type: 'text', text: 'SIS', cache_control: { type: 'ephemeral' } }])
+    expect(req.system).toEqual([{ type: 'text', text: 'SIS' }, { type: 'text', text: 'CTX', cache_control: { type: 'ephemeral' } }])
     expect(req.messages).toEqual([{ role: 'user', content: 'USR' }])
   })
 
   it('recusa e erros viram ProviderError com o tipo certo', async () => {
     const kindOf = async (reply: () => unknown) => {
       try {
-        await anthropicProvider(cfg, fakeClient(reply).client).classify('s', 'u', signal)
+        await anthropicProvider(cfg, fakeClient(reply).client).classify('s', 'c', 'u', signal)
         return 'nenhum'
       } catch (e) {
         return e instanceof ProviderError ? e.kind : 'outro'
@@ -36,6 +36,7 @@ describe('anthropicProvider', () => {
     }
     const h = new Headers()
     expect(await kindOf(() => ok('', 'refusal'))).toBe('refusal')
+    expect(await kindOf(() => ok('{"itens":[', 'max_tokens'))).toBe('outro')
     expect(await kindOf(() => { throw new Anthropic.AuthenticationError(401, {}, 'bad key', h) })).toBe('auth')
     expect(await kindOf(() => { throw new Anthropic.RateLimitError(429, {}, 'slow', h) })).toBe('rate')
     expect(await kindOf(() => { throw new Anthropic.NotFoundError(404, {}, 'no model', h) })).toBe('model')

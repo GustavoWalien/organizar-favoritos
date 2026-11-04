@@ -90,3 +90,25 @@ describe('renameNewFolder e groupByTarget', () => {
     ])
   })
 })
+
+describe('destino na Lixeira', () => {
+  it('pasta de destino que foi para a Lixeira: fica de fora e conta', async () => {
+    const { TRASH_TITLE } = await import('../../src/core/cleanup')
+    const t: BmNode[] = [
+      dir('0', '', '', [
+        dir('1', '0', 'Barra', [lnk('a', '1')]),
+        dir('2', '0', 'Outros', [dir('99', '2', TRASH_TITLE, [dir('10', '99', 'Dev')])]),
+      ]),
+    ]
+    const r = planFromProposal(prop([item('a', '10'), item('a', '99')]), t, none, 1)
+    expect(r.plan.operations).toEqual([])
+    expect(r.changed).toBe(2)
+  })
+
+  it('renomear não junta com a Lixeira', async () => {
+    const { TRASH_TITLE } = await import('../../src/core/cleanup')
+    const t: BmNode[] = [dir('0', '', '', [dir('1', '0', 'Barra', [lnk('a', '1')]), dir('2', '0', 'Outros', [dir('99', '2', TRASH_TITLE)])])]
+    const p = renameNewFolder({ ...prop([item('a', '2', ['X'])]) }, '2', ['X'], TRASH_TITLE, t)
+    expect(p.items[0]).toMatchObject({ folderId: '2', newPath: [TRASH_TITLE] })
+  })
+})

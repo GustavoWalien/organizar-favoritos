@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { ProviderConfig } from '../storage/aiStore'
 import { RESPONSE_SCHEMA } from './prompt'
 import { ProviderError, type Provider } from './provider'
+import { InvalidResponseError } from './validate'
 
 type AnthropicConfig = Extract<ProviderConfig, { kind: 'anthropic' }>
 
@@ -23,7 +24,7 @@ function toProviderError(e: unknown): unknown {
 export function anthropicProvider(cfg: AnthropicConfig, client?: Pick<Anthropic, 'beta'>): Provider {
   const api = client ?? new Anthropic({ apiKey: cfg.apiKey, dangerouslyAllowBrowser: true, maxRetries: 2 })
 
-  const call = async (system: string, user: string, maxTokens: number, signal: AbortSignal): Promise<string> => {
+  const call = async (system: string, context: string, user: string, maxTokens: number, signal: AbortSignal): Promise<string> => {
     try {
       const res = await api.beta.messages.create(
         {
@@ -31,13 +32,16 @@ export function anthropicProvider(cfg: AnthropicConfig, client?: Pick<Anthropic,
           max_tokens: maxTokens,
           betas: ['server-side-fallback-2026-07-01'],
           fallbacks: 'default',
-          system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+          // Instruções e candidatas se repetem em todos os lotes: ficam antes do ponto de cache.
+          system: [{ type: 'text', text: system }, { type: 'text', text: context, cache_control: { type: 'ephemeral' } }],
           messages: [{ role: 'user', content: user }],
           output_config: { effort: 'low', format: { type: 'json_schema', schema: RESPONSE_SCHEMA as unknown as Record<string, unknown> } },
         },
         { signal },
       )
       if (res.stop_reason === 'refusal') throw new ProviderError('refusal', 'Pedido recusado')
+      // Resposta cortada: o JSON não fecha. Trata como resposta inválida (o lote é refeito uma vez).
+      if (res.stop_reason === 'max_tokens') throw new InvalidResponseError('Resposta cortada pelo limite de tokens')
       const text = res.content.find((b) => b.type === 'text')
       return text && text.type === 'text' ? text.text : ''
     } catch (e) {
@@ -46,9 +50,10 @@ export function anthropicProvider(cfg: AnthropicConfig, client?: Pick<Anthropic,
   }
 
   return {
-    classify: (system, user, signal) => call(system, user, 8000, signal),
+    // 16.000: o raciocínio do Opus 5.5 conta no limite, junto com cerca de 40 tokens por favorito.
+    classify: (system, context, user, signal) => call(system, context, user, 16000, signal),
     test: async (signal) => {
-      await call('Responda só com {"itens": []}.', 'Teste de conexão.', 1000, signal)
+      await call('Responda só com JSON: {"itens": []}.', 'Sem candidatas.', 'Teste de conexão.', 1000, signal)
     },
   }
 }
