@@ -7,6 +7,7 @@ import { flattenLinks, otherBookmarksId } from '../../core/tree'
 import CommandPalette from '../components/CommandPalette'
 import MovePicker from '../components/MovePicker'
 import Toast from '../components/Toast'
+import { requestLinkCheckPermission } from '../../chrome/permissions'
 import { makeBackup } from '../backupActions'
 import { useLibrary } from '../state/useLibrary'
 import { useRoute } from '../state/useRoute'
@@ -28,6 +29,7 @@ export default function Shell() {
 
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [moveIds, setMoveIds] = useState<string[] | null>(null)
+  const [autoTestToken, setAutoTestToken] = useState(0)
 
   const tree = lib.tree
   const allLinks = useMemo(() => (tree ? flattenLinks(tree, findTrash(tree)?.id) : []), [tree])
@@ -71,6 +73,15 @@ export default function Shell() {
     else void lib.trash(ids)
   }
 
+  /** "Testar agora" fora da Limpeza: pede a permissão no próprio clique e abre a aba já testando. */
+  const startLinkCheck = () => {
+    requestLinkCheckPermission().then((ok) => {
+      if (!ok) { lib.notify('Sem a permissão de acesso aos sites não dá para testar os links'); return }
+      setAutoTestToken((n) => n + 1)
+      setView({ name: 'cleanup', tab: 'quebrados' })
+    }, (e) => lib.notify(`Erro: ${e instanceof Error ? e.message : String(e)}`))
+  }
+
   const backupNow = () => {
     makeBackup().then(() => { lib.notify('Backup feito'); void dash.refresh() }, (e) => lib.notify(`Erro: ${e instanceof Error ? e.message : String(e)}`))
   }
@@ -80,7 +91,7 @@ export default function Shell() {
     if (action === 'backup') backupNow()
     else if (action === 'analisar-sem-uso') setView({ name: 'cleanup', tab: 'sem-uso' })
     else if (action === 'achar-duplicados') setView({ name: 'cleanup', tab: 'duplicados' })
-    else if (action === 'testar-links') setView({ name: 'cleanup', tab: 'quebrados' })
+    else if (action === 'testar-links') startLinkCheck()
     else if (action === 'abrir-organizar') setView({ name: 'organize' })
     else setView({ name: 'trash' })
   }
@@ -108,7 +119,18 @@ export default function Shell() {
   } else if (view.name === 'trash') {
     content = <TrashView tree={tree} mode={mode} busy={lib.busy} onChanged={lib.reload} onNotify={lib.notify} folderOptions={options} onMove={lib.move} />
   } else if (view.name === 'cleanup') {
-    content = <CleanupView key={`cleanup-${view.tab ?? ''}`} tab={view.tab} />
+    content = (
+      <CleanupView
+        tab={view.tab}
+        prefs={dash.prefs}
+        linkCheck={dash.linkCheck}
+        autoTestToken={autoTestToken}
+        onTab={(tab) => setView({ name: 'cleanup', tab })}
+        onPrefs={dash.setPrefs}
+        onLinkCheck={dash.setLinkCheck}
+        onNotify={lib.notify}
+      />
+    )
   } else if (view.name === 'organize') {
     content = <OrganizeView tree={tree} marks={lib.marks} folderOptions={options} busy={lib.busy} onMove={lib.move} onSetProtected={lib.setProtected} onNotify={lib.notify} onChanged={lib.reload} />
   } else if (view.name === 'backups') {
