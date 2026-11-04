@@ -11,7 +11,7 @@ import type { BmNode, JournalEntry } from '../../core/types'
 import { lastEntry } from '../../storage/journal'
 import { prepareCleanup, preparePurge } from '../cleanupActions'
 import { fromDuplicates, fromEmptyFolders, fromInactive, fromLinkStatuses } from '../candidates'
-import { startAnalysis, type CleanupStart } from '../cleanupStart'
+import type { CleanupTab } from '../../core/route'
 import LinkReviewList, { REASON_LABEL } from '../components/LinkReviewList'
 import { clear, filterByReason, mergeCandidates, selectAll, toggleOne, type Candidate, type Reason } from '../selection'
 
@@ -19,7 +19,7 @@ const PAGE = 200
 type Parts = Record<'inactive' | 'dups' | 'links' | 'empties', Candidate[]>
 const EMPTY: Parts = { inactive: [], dups: [], links: [], empties: [] }
 
-export default function CleanupView({ start }: { start?: CleanupStart }) {
+export default function CleanupView({ tab }: { tab?: CleanupTab }) {
   const [tree, setTree] = useState<BmNode[] | null>(null)
   const [parts, setParts] = useState<Parts>(EMPTY)
   const [selected, setSelected] = useState<Set<string>>(clear())
@@ -47,10 +47,9 @@ export default function CleanupView({ start }: { start?: CleanupStart }) {
   useEffect(() => {
     if (started.current || !tree) return
     started.current = true
-    const which = startAnalysis(start)
-    if (which === 'inactive') void analyzeInactive()
-    else if (which === 'dups') void analyzeDuplicates()
-  }, [tree, start])
+    if (tab === 'sem-uso') void analyzeInactive()
+    else if (tab === 'duplicados') void analyzeDuplicates()
+  }, [tree, tab])
 
   const candidates = useMemo(() => mergeCandidates(Object.values(parts).flat()), [parts])
   const visible = useMemo(() => filterByReason(candidates, filter), [candidates, filter])
@@ -151,7 +150,7 @@ export default function CleanupView({ start }: { start?: CleanupStart }) {
             <button onClick={() => abort.current?.abort()}>Cancelar</button>
           </>
         ) : (
-          <button className={start === 'quebrado' ? 'primary' : undefined} onClick={testLinks} disabled={busy}>Testar links</button>
+          <button className={tab === 'quebrados' ? 'primary' : undefined} onClick={testLinks} disabled={busy}>Testar links</button>
         )}
       </section>
 

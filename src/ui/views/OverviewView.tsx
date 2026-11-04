@@ -40,9 +40,9 @@ export default function OverviewView({ tree, overview, mode, folderOptions, busy
       <h2 className="view-title">Resumo dos seus favoritos</h2>
       <div className="tiles">
         <Tile value={String(overview.total)} label="favoritos" />
-        <Tile value={String(overview.inactive)} label="sem uso há 1 ano →" tone="warn" onClick={() => onNavigate({ name: 'cleanup', start: 'sem-uso' })} />
-        <Tile value="?" label="quebrados · testar links →" tone="danger" onClick={() => onNavigate({ name: 'cleanup', start: 'quebrado' })} />
-        <Tile value={String(overview.duplicates)} label="duplicados →" tone="ok" onClick={() => onNavigate({ name: 'cleanup', start: 'duplicado' })} />
+        <Tile value={String(overview.inactive)} label="sem uso há 1 ano →" tone="warn" onClick={() => onNavigate({ name: 'cleanup', tab: 'sem-uso' })} />
+        <Tile value="?" label="quebrados · testar links →" tone="danger" onClick={() => onNavigate({ name: 'cleanup', tab: 'quebrados' })} />
+        <Tile value={String(overview.duplicates)} label="duplicados →" tone="ok" onClick={() => onNavigate({ name: 'cleanup', tab: 'duplicados' })} />
       </div>
 
       <div className="view-head">

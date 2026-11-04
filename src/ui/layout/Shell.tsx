@@ -11,6 +11,7 @@ import MovePicker from '../components/MovePicker'
 import Toast from '../components/Toast'
 import { makeBackup } from '../backupActions'
 import { useLibrary } from '../state/useLibrary'
+import { useRoute } from '../state/useRoute'
 import BackupsView from '../views/BackupsView'
 import CleanupView from '../views/CleanupView'
 import OrganizeView from '../views/OrganizeView'
@@ -23,7 +24,7 @@ import Topbar from './Topbar'
 
 export default function Shell() {
   const lib = useLibrary()
-  const [view, setView] = useState<View>({ name: 'overview' })
+  const [route, setView] = useRoute()
   const [mode, setMode] = useState<ViewMode>(loadViewMode)
 
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -47,7 +48,15 @@ export default function Shell() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  // Pasta que não existe mais (apagada por fora, endereço antigo): corrige o endereço para a Visão geral.
+  const missingFolder = !!tree && route.name === 'folder' && !findFolderNode(buildFolderTree(tree), route.id)
+  useEffect(() => {
+    if (missingFolder) setView({ name: 'overview' }, { replace: true })
+  }, [missingFolder, setView])
+
   if (!tree) return <p className="loading">Lendo favoritos…</p>
+
+  const view: View = missingFolder ? { name: 'overview' } : route
 
   const folders = sidebarFolders(tree)
   const options = folderOptions(tree)
@@ -69,9 +78,9 @@ export default function Shell() {
     setPaletteOpen(false)
     if (action === 'backup') {
       makeBackup().then(() => lib.notify('Backup feito'), (e) => lib.notify(`Erro: ${e instanceof Error ? e.message : String(e)}`))
-    } else if (action === 'analisar-sem-uso') setView({ name: 'cleanup', start: 'sem-uso' })
-    else if (action === 'achar-duplicados') setView({ name: 'cleanup', start: 'duplicado' })
-    else if (action === 'testar-links') setView({ name: 'cleanup', start: 'quebrado' })
+    } else if (action === 'analisar-sem-uso') setView({ name: 'cleanup', tab: 'sem-uso' })
+    else if (action === 'achar-duplicados') setView({ name: 'cleanup', tab: 'duplicados' })
+    else if (action === 'testar-links') setView({ name: 'cleanup', tab: 'quebrados' })
     else if (action === 'abrir-organizar') setView({ name: 'organize' })
     else setView({ name: 'trash' })
   }
@@ -102,7 +111,7 @@ export default function Shell() {
   } else if (view.name === 'trash') {
     content = <TrashView tree={tree} mode={mode} busy={lib.busy} onChanged={lib.reload} onNotify={lib.notify} folderOptions={options} onMove={lib.move} />
   } else if (view.name === 'cleanup') {
-    content = <CleanupView key={`cleanup-${view.start ?? ''}`} start={view.start} />
+    content = <CleanupView key={`cleanup-${view.tab ?? ''}`} tab={view.tab} />
   } else if (view.name === 'organize') {
     content = <OrganizeView tree={tree} marks={lib.marks} folderOptions={options} busy={lib.busy} onMove={lib.move} onSetProtected={lib.setProtected} onNotify={lib.notify} onChanged={lib.reload} />
   } else if (view.name === 'backups') {
