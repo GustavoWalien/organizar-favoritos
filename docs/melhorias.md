@@ -14,4 +14,4 @@ Pontos levantados durante os testes manuais. Ficam aqui até serem priorizados e
 
 ### Em espera
 
-- **Redesenho da marca "não mexer"** (pontos 2 e 3): Gustavo vai pensar numa forma melhor antes de implementar. Os passos 7 (marca e herança) e 9 (restaurar backup com marcas) do roteiro de teste ficam para depois disso.
+- **Redesenho da marca "não mexer"** (pontos 2 e 3). No redesenho do painel (04/11/2026) o cadeado saiu da barra lateral; a marca continua na vista Organizar e no CSV. Gustavo vai pensar numa forma melhor antes de implementar. Os passos 7 (marca e herança) e 9 (restaurar backup com marcas) do roteiro de teste ficam para depois disso.
