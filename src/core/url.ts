@@ -16,6 +16,25 @@ export function normalizeUrl(input: string): string | null {
   return `${u.protocol}//${u.host}${path}${search}`
 }
 
+/**
+ * Chave de um link no CSV da estrutura: `normalizeUrl` para http(s) e, para arquivos locais
+ * (`file:`), a URL sem o `#fragmento`. Arquivos locais ficam de fora de `normalizeUrl` (duplicados,
+ * sem uso), mas precisam ir e voltar no CSV. Outros esquemas (`javascript:`, `chrome:`…) dão null.
+ */
+export function structureUrlKey(input: string): string | null {
+  const web = normalizeUrl(input)
+  if (web !== null) return web
+  let u: URL
+  try {
+    u = new URL(input)
+  } catch {
+    return null
+  }
+  if (u.protocol !== 'file:') return null
+  u.hash = ''
+  return u.href
+}
+
 function isPrivateHost(host: string): boolean {
   if (host === 'localhost' || host.endsWith('.local') || host === '[::1]') return true
   if (!host.includes('.')) return true // intranet: nome sem ponto

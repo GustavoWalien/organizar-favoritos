@@ -3,7 +3,7 @@ import { isProtectedEffective, type ItemMark, type MarksMap, rootToken } from '.
 import { decodePath, encodePath, type StructureRow } from './structureCsv'
 import { findNode, flattenLinks } from './tree'
 import type { BmFolder, BmNode, FlatLink, Operation, Plan, PlanMark } from './types'
-import { normalizeUrl } from './url'
+import { structureUrlKey } from './url'
 
 export type ImportKind = 'criar-link' | 'criar-pasta' | 'mover' | 'marcar'
 
@@ -64,7 +64,7 @@ function indexTree(tree: BmNode[]): TreeIndex {
         walk(c, raiz, [...sub, c.title])
         continue
       }
-      const norm = normalizeUrl(c.url)
+      const norm = structureUrlKey(c.url)
       if (norm === null) continue
       const group = JSON.stringify([norm, fk])
       const n = seen.get(group) ?? 0
@@ -182,11 +182,11 @@ export function planImport(tree: BmNode[], marks: MarksMap, csvRows: StructureRo
   const rows = sortByOrdem(csvRows)
   const idx = indexTree(tree)
   const browserLinks = flattenLinks(tree)
-  const browserCount = countBy(browserLinks, (l) => normalizeUrl(l.url))
-  const csvCount = countBy(rows, (r) => (r.tipo === 'link' ? normalizeUrl(r.url) : null))
+  const browserCount = countBy(browserLinks, (l) => structureUrlKey(l.url))
+  const csvCount = countBy(rows, (r) => (r.tipo === 'link' ? structureUrlKey(r.url) : null))
   const byUrl = new Map<string, FlatLink>()
   for (const l of browserLinks) {
-    const norm = normalizeUrl(l.url)
+    const norm = structureUrlKey(l.url)
     if (norm !== null) byUrl.set(norm, l)
   }
 
@@ -265,7 +265,7 @@ export function planImport(tree: BmNode[], marks: MarksMap, csvRows: StructureRo
       continue
     }
 
-    const norm = normalizeUrl(r.url)
+    const norm = structureUrlKey(r.url)
     if (norm === null) {
       ignored.push({ label, reason: `URL não suportada: ${r.url}` })
       continue

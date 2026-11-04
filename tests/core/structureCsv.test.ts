@@ -317,6 +317,12 @@ describe('parseStructure', () => {
     expect(r.issues[1]?.message).toContain('URL não suportada')
   })
 
+  it('link para arquivo local (file:///) é aceito', () => {
+    const r = parseStructure(csv('link,Barra de favoritos,PDF,file:///C:/docs/a%20b.pdf,0,,,,barra'))
+    expect(r.issues).toEqual([])
+    expect(r.rows.map((x) => x.url)).toEqual(['file:///C:/docs/a%20b.pdf'])
+  })
+
   it('pasta não precisa de URL', () => {
     const r = parseStructure(csv('pasta,Barra de favoritos/Dev,Dev,,0,,,,barra'))
     expect(r.issues).toEqual([])

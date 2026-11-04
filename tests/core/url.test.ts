@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isCheckableUrl, normalizeUrl } from '../../src/core/url'
+import { isCheckableUrl, normalizeUrl, structureUrlKey } from '../../src/core/url'
 
 describe('normalizeUrl', () => {
   it('padroniza esquema e host, tira fragmento e rastreio, ordena parâmetros e tira a barra final', () => {
@@ -39,5 +39,17 @@ describe('isCheckableUrl', () => {
   })
   it('recusa o que não é http(s)', () => {
     for (const u of ['javascript:void(0)', 'chrome://extensions', 'file:///a', 'ftp://a.com']) expect(isCheckableUrl(u), u).toBe(false)
+  })
+})
+
+describe('structureUrlKey', () => {
+  it('http(s): igual a normalizeUrl', () => {
+    expect(structureUrlKey('HTTPS://Example.com/a/?utm_source=x#top')).toBe('https://example.com/a')
+  })
+  it('file:///: aceita, sem o #fragmento, mantendo a codificação', () => {
+    expect(structureUrlKey('file:///C:/Users/a/%C3%81rea/x.pdf#page=2')).toBe('file:///C:/Users/a/%C3%81rea/x.pdf')
+  })
+  it('outros esquemas continuam de fora', () => {
+    for (const u of ['javascript:alert(1)', 'chrome://settings', 'data:text/plain,hi', 'ftp://a.com/x', '']) expect(structureUrlKey(u), u).toBeNull()
   })
 })

@@ -2,6 +2,7 @@ import { findTrash } from './cleanup'
 import { parseCsv, toCsv } from './csv'
 import { rootToken, type MarksMap } from './marks'
 import type { BmNode } from './types'
+import { structureUrlKey } from './url'
 
 /** Colunas do CSV da estrutura, nesta ordem. */
 export const STRUCTURE_COLUMNS: readonly string[] = [
@@ -156,14 +157,6 @@ export interface RowIssue {
 const REQUIRED_COLUMNS = ['tipo', 'caminho', 'titulo', 'url', 'raiz'] as const
 const ROOTS: readonly StructureRow['raiz'][] = ['barra', 'outros', 'mobile']
 
-function isSupportedUrl(url: string): boolean {
-  try {
-    const p = new URL(url).protocol
-    return p === 'http:' || p === 'https:'
-  } catch {
-    return false
-  }
-}
 
 /**
  * Lê o CSV da estrutura (inverso de `exportStructure`). As colunas são achadas pelo nome do
@@ -228,7 +221,7 @@ export function parseStructure(text: string): { rows: StructureRow[]; issues: Ro
       continue
     }
     const url = unguardFormula(get('url')).trim()
-    if (tipo === 'link' && !isSupportedUrl(url)) {
+    if (tipo === 'link' && structureUrlKey(url) === null) {
       reject(url === '' ? 'URL não suportada: o link está sem URL.' : `URL não suportada: ${url}`)
       continue
     }

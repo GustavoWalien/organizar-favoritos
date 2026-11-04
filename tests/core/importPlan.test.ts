@@ -70,6 +70,23 @@ describe('planImport', () => {
     expect(planImport(tree, marks, csvRows(tree, marks))).toEqual({ items: [], blocked: [], ignored: [] })
   })
 
+  it('arquivo local (file:///): exportar e importar de volta não muda nada', () => {
+    const pdf = 'file:///C:/Users/Fulano/Meus%20Documentos/c%C3%A1lculo.pdf'
+    const tree = browser([folder('5', '1', 'Docs', [link('10', '5', 'PDF', pdf)])])
+    const rows = csvRows(tree)
+    expect(rows.map((r) => r.title)).toContain('PDF')
+    expect(planImport(tree, new Map(), rows)).toEqual({ items: [], blocked: [], ignored: [] })
+  })
+
+  it('arquivo local (file:///) ausente no navegador vira criar-link; presente em outra pasta, vira mover', () => {
+    const pdf = 'file:///C:/docs/a.pdf'
+    const created = planImport(browser(), new Map(), [row({ title: 'PDF', url: pdf })])
+    expect(kinds(created)).toEqual(['criar-link PDF'])
+    const tree = browser([folder('5', '1', 'Docs')], [link('20', '2', 'PDF', pdf)])
+    const moved = planImport(tree, new Map(), [row({ path: ['Barra de favoritos', 'Docs'], title: 'PDF', url: pdf })])
+    expect(moved.items[0]?.ops).toEqual([{ op: 'move', id: '20', toParentId: '5' }])
+  })
+
   it('mover: link único nos dois lados, em outra pasta, vira mover (sem criar)', () => {
     const tree = browser([folder('5', '1', 'Dev')], [link('20', '2', 'Ex', 'https://ex.example/')])
     const rows = [row({ path: ['Barra de favoritos', 'Dev'], title: 'Ex', url: 'https://ex.example' })]
