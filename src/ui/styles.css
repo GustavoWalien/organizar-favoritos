@@ -275,3 +275,23 @@ button.kpi-card:hover:not(:disabled) { background: var(--raised); }
 .col-bar.warn { background: var(--warn-text); }
 .columns-labels { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-top: 8px; font-size: 12px; color: var(--text-secondary); text-align: center; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---- backups ---- */
+.backups { display: grid; gap: 16px; }
+.backups .page-head { margin-bottom: 0; }
+.history .panel-top input { flex: 1 1 260px; max-width: 360px; min-height: 34px; box-sizing: border-box; }
+.history-list { list-style: none; margin: 0; padding: 0; }
+.history-row { display: grid; grid-template-columns: 140px minmax(0, 1fr) 100px auto auto; gap: 14px; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.history-row .tag { justify-self: start; }
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deleted { margin-bottom: 12px; padding: 4px 12px; background: var(--raised); border-radius: 10px; }
+.more-menu { position: relative; }
+.more-trigger { padding: 5px 8px; display: inline-grid; place-items: center; }
+.menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 170px; display: grid; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 12px 30px rgba(0, 0, 0, .35); }
+.menu button { background: none; border: 0; text-align: left; padding: 7px 10px; border-radius: 6px; }
+.menu button:hover, .menu button:focus-visible { background: var(--raised); }
+.restore-dialog { width: min(620px, 94vw); max-height: 80vh; overflow-y: auto; }
+.restore-option { display: flex; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 10px; }
+.restore-option.column { flex-direction: column; align-items: stretch; }
+.restore-option p { margin: 4px 0 0; }
+.restore-hit { display: flex; align-items: center; gap: 10px; padding: 4px 6px; }

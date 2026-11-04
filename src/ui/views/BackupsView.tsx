@@ -1,30 +1,45 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { chromeBookmarksApi } from '../../chrome/bookmarksApi'
+import { findDeleted } from '../../core/deletedSearch'
 import { runPlan, BackupFailedError } from '../../core/plan'
 import { planRestoreAll, planRestoreItem } from '../../core/restore'
 import { snapshotToJson, snapshotToNetscapeHtml } from '../../core/snapshot'
-import { flattenLinks, listFolders, searchLinks, summarize } from '../../core/tree'
-import type { Plan, Snapshot } from '../../core/types'
-import { listSnapshots } from '../../storage/snapshots'
+import { summarize } from '../../core/tree'
+import type { BmNode, Plan, Snapshot } from '../../core/types'
+import { markExported } from '../../storage/prefs'
+import { listSnapshots, MAX_SNAPSHOTS } from '../../storage/snapshots'
 import { makeBackup } from '../backupActions'
+import Icon from '../components/Icon'
+import MoreMenu from '../components/MoreMenu'
+import RestoreDialog from '../components/RestoreDialog'
 import { downloadText } from '../download'
 import { backupFileName } from '../fileName'
+import { ageLabel } from '../format'
 
-const when = (t: number) => new Date(t).toLocaleString('pt-BR')
+const when = (t: number) => new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+const EXPORT_STALE_MS = 30 * 86_400_000
 
 function describePlan(plan: Plan): string {
   const count = (op: string) => plan.operations.filter((o) => o.op === op).length
   return `${plan.label}: criar ${count('create-folder')} pasta(s) e ${count('create-link')} favorito(s), mover ${count('move')}.`
 }
 
-export default function BackupsView() {
+interface Props {
+  /** Árvore atual, para achar o que foi apagado. */
+  tree: BmNode[]
+  lastExportAt: number | null
+  /** Depois de backup, exportação ou restauração: o painel relê os números. */
+  onChanged: () => void
+}
+
+export default function BackupsView({ tree, lastExportAt, onChanged }: Props) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
-  const [open, setOpen] = useState<string | null>(null)
+  const [restoring, setRestoring] = useState<Snapshot | null>(null)
   const [query, setQuery] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const reload = useCallback(() => listSnapshots().then(setSnapshots), [])
+  const reload = useCallback(() => listSnapshots().then((list) => setSnapshots([...list].sort((a, b) => b.createdAt - a.createdAt))), [])
   useEffect(() => { void reload() }, [reload])
 
   const run = async (fn: () => Promise<string>) => {
@@ -36,6 +51,7 @@ export default function BackupsView() {
     } finally {
       setBusy(false)
       await reload()
+      onChanged()
     }
   }
 
@@ -44,19 +60,18 @@ export default function BackupsView() {
     return `Backup feito em ${when(s.createdAt)}.`
   })
 
-  const restore = (plan: Plan) => run(async () => {
-    if (plan.operations.length === 0) return 'Esse item já está no lugar original.'
-    if (!window.confirm(`${describePlan(plan)}\n\nUm backup do estado atual será feito antes. Continuar?`)) return 'Restauração cancelada.'
-    const r = await runPlan(plan, chromeBookmarksApi, Date.now())
-    return r.failed.length
-      ? `Restaurado com ${r.failed.length} falha(s): ${r.failed.map((f) => f.error).join('; ')}`
-      : `Restauração concluída (${r.applied} operações).`
-  })
+  const exportAs = async (s: Snapshot, kind: 'json' | 'html') => {
+    if (kind === 'json') downloadText(backupFileName(s.createdAt, 'json'), snapshotToJson(s), 'application/json')
+    else downloadText(backupFileName(s.createdAt, 'html'), snapshotToNetscapeHtml(s), 'text/html')
+    await markExported(Date.now())
+    onChanged()
+  }
 
   const restoreAll = (s: Snapshot) => run(async () => {
     const plan = planRestoreAll(s, await chromeBookmarksApi.getTree(), new Date())
     if (!window.confirm(`${describePlan(plan)}\n\nNada existente será sobrescrito. Continuar?`)) return 'Restauração cancelada.'
     const r = await runPlan(plan, chromeBookmarksApi, Date.now())
+    setRestoring(null)
     return r.failed.length ? `Restaurado com ${r.failed.length} falha(s).` : 'Backup restaurado na pasta "Restaurado em ...".'
   })
 
@@ -68,61 +83,97 @@ export default function BackupsView() {
     return r.failed.length ? `Falhou: ${r.failed[0]?.error}` : 'Item restaurado.'
   })
 
-  const opened = snapshots.find((s) => s.id === open)
-  const links = useMemo(() => (opened ? flattenLinks(opened.tree) : []), [opened])
-  const folders = useMemo(() => (opened ? listFolders(opened.tree) : []), [opened])
-  const found = useMemo(() => searchLinks(links, query), [links, query])
+  const now = Date.now()
+  const latest = snapshots[0]
+  const autos = snapshots.filter((s) => s.kind !== 'manual').length
+  const manuals = snapshots.length - autos
+  const exportStale = lastExportAt === null || now - lastExportAt > EXPORT_STALE_MS
+  const deleted = useMemo(() => findDeleted(snapshots, tree, query), [snapshots, tree, query])
+  const byId = useMemo(() => new Map(snapshots.map((s) => [s.id, s])), [snapshots])
+  const sizes = useMemo(() => new Map(snapshots.map((s) => [s.id, summarize(s.tree)])), [snapshots])
 
   return (
-    <div>
-      <p>
-        <button onClick={backupNow} disabled={busy}>Fazer backup agora</button>{' '}
-        <small>Um backup também é feito automaticamente antes de cada limpeza ou restauração. Guardamos os últimos 20.</small>
-      </p>
-      {message && <p role="status">{message}</p>}
-      {snapshots.length === 0 && <p>Nenhum backup ainda.</p>}
-      <ul className="list">
-        {snapshots.map((s) => (
-          <li key={s.id}>
-            <strong>{when(s.createdAt)}</strong> <span className="tag">{s.kind === 'manual' ? 'manual' : 'automático'}</span> {s.reason} — {summarize(s.tree).links} favoritos
-            <div className="actions">
-              <button onClick={() => downloadText(backupFileName(s.createdAt, 'json'), snapshotToJson(s), 'application/json')}>Exportar JSON</button>
-              <button onClick={() => downloadText(backupFileName(s.createdAt, 'html'), snapshotToNetscapeHtml(s), 'text/html')}>Exportar HTML</button>
-              <button onClick={() => restoreAll(s)} disabled={busy}>Restaurar tudo</button>
-              <button onClick={() => { setOpen(open === s.id ? null : s.id); setQuery('') }}>
-                {open === s.id ? 'Fechar' : 'Restaurar um item…'}
-              </button>
-            </div>
-            {open === s.id && (
-              <div className="detail">
-                <label>
-                  Buscar favorito neste backup{' '}
-                  <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="título ou endereço" />
-                </label>
-                <ul className="list">
-                  {found.map((l) => (
-                    <li key={l.id}>
-                      {l.title || l.url} <small>{l.path.join(' / ')}</small>{' '}
-                      <button onClick={() => restoreItem(s, l.id)} disabled={busy}>Restaurar</button>
-                    </li>
-                  ))}
-                </ul>
-                <details>
-                  <summary>Restaurar uma pasta inteira ({folders.length} pastas)</summary>
-                  <ul className="list">
-                    {folders.map((f) => (
-                      <li key={f.id}>
-                        {[...f.path, f.title].join(' / ')}{' '}
-                        <button onClick={() => restoreItem(s, f.id)} disabled={busy}>Restaurar</button>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              </div>
+    <section className="backups">
+      <div className="page-head">
+        <div>
+          <h1>Backups</h1>
+          <p className="muted">Um backup é feito sozinho antes de cada mudança. Restaurar nunca apaga nada: cria uma pasta nova.</p>
+        </div>
+        <button className="primary big" onClick={backupNow} disabled={busy}><Icon name="archive" /> Fazer backup agora</button>
+      </div>
+
+      {message && <p role="status" className="status">{message}</p>}
+
+      <div className="dash-row kpis">
+        <section className="panel kpi-card">
+          <span className="label-caps">Último backup</span>
+          <span className={latest ? 'kpi tone-duplicados' : 'kpi muted'}>{latest ? ageLabel(latest.createdAt, now) : 'nenhum'}</span>
+          <span className="muted small">{latest ? `${latest.kind === 'manual' ? 'manual' : 'automático'} · ${latest.reason}` : 'faça o primeiro agora'}</span>
+        </section>
+        <section className="panel kpi-card">
+          <span className="label-caps">Guardados</span>
+          <span className="kpi">{autos} + {manuals}</span>
+          <span className="muted small">{autos} de {MAX_SNAPSHOTS} automáticos · {manuals} {manuals === 1 ? 'manual' : 'manuais'} (nunca apagados)</span>
+        </section>
+        <section className="panel kpi-card">
+          <span className="label-caps">Cópia fora do navegador</span>
+          <span className={exportStale ? 'kpi tone-sem-uso' : 'kpi tone-duplicados'}>{lastExportAt === null ? 'nunca' : ageLabel(lastExportAt, now)}</span>
+          <span className="muted small">exporte em HTML para guardar no computador</span>
+        </section>
+      </div>
+
+      <section className="panel history">
+        <div className="panel-top">
+          <h2>Histórico</h2>
+          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Achar um favorito apagado…" aria-label="Achar um favorito apagado nos backups" />
+        </div>
+
+        {query.trim().length >= 2 && (
+          <div className="deleted">
+            {deleted.length === 0 ? <p className="muted small">Nenhum favorito apagado com esse nome ou endereço nos backups.</p> : (
+              <ul className="activity">
+                {deleted.map((h) => (
+                  <li key={`${h.snapshotId}-${h.link.id}`}>
+                    <div className="step-text"><div>{h.link.title || h.link.url}</div><div className="muted small">no backup de {when(h.createdAt)}</div></div>
+                    <button onClick={() => { const s = byId.get(h.snapshotId); if (s) void restoreItem(s, h.link.id) }} disabled={busy}>Restaurar</button>
+                  </li>
+                ))}
+              </ul>
             )}
-          </li>
-        ))}
-      </ul>
-    </div>
+          </div>
+        )}
+
+        {snapshots.length === 0 ? <p className="empty">Nenhum backup ainda.</p> : (
+          <ul className="history-list">
+            {snapshots.map((s) => {
+              const size = sizes.get(s.id)!
+              return (
+                <li key={s.id} className="history-row">
+                  <div><div>{ageLabel(s.createdAt, now)}</div><div className="muted small">{when(s.createdAt)}</div></div>
+                  <div className="step-text"><div className="ellipsis">{s.reason}</div><div className="muted small">{size.links.toLocaleString('pt-BR')} favoritos · {size.folders.toLocaleString('pt-BR')} pastas</div></div>
+                  <span className={s.kind === 'manual' ? 'tag tag-duplicado' : 'tag'}>{s.kind === 'manual' ? 'manual' : 'automático'}</span>
+                  <button onClick={() => setRestoring(s)} disabled={busy}>Restaurar…</button>
+                  <MoreMenu label="Mais ações deste backup" items={[
+                    { label: 'Exportar HTML', onSelect: () => { void exportAs(s, 'html') } },
+                    { label: 'Exportar JSON', onSelect: () => { void exportAs(s, 'json') } },
+                  ]} />
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
+
+      {restoring && (
+        <RestoreDialog
+          snapshot={restoring}
+          title={when(restoring.createdAt)}
+          busy={busy}
+          onRestoreAll={() => { void restoreAll(restoring) }}
+          onRestoreItem={(id) => { void restoreItem(restoring, id) }}
+          onClose={() => setRestoring(null)}
+        />
+      )}
+    </section>
   )
 }

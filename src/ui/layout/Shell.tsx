@@ -134,7 +134,7 @@ export default function Shell() {
   } else if (view.name === 'organize') {
     content = <OrganizeView tree={tree} marks={lib.marks} folderOptions={options} busy={lib.busy} onMove={lib.move} onSetProtected={lib.setProtected} onNotify={lib.notify} onChanged={lib.reload} />
   } else if (view.name === 'backups') {
-    content = <BackupsView />
+    content = <BackupsView tree={tree} lastExportAt={dash.lastExportAt} onChanged={() => { void dash.refresh() }} />
   } else {
     content = (
       <OverviewView
