@@ -3,8 +3,6 @@ import { buildFolderTree, directLinks, findFolderNode, folderOptions, folderPath
 import { findTrash } from '../../core/cleanup'
 import type { PaletteAction } from '../../core/palette'
 import type { View } from '../../core/route'
-import { lockedFolderIds } from '../../core/organize'
-import { computeOverview } from '../../core/overview'
 import { flattenLinks, otherBookmarksId } from '../../core/tree'
 import CommandPalette from '../components/CommandPalette'
 import MovePicker from '../components/MovePicker'
@@ -12,6 +10,7 @@ import Toast from '../components/Toast'
 import { makeBackup } from '../backupActions'
 import { useLibrary } from '../state/useLibrary'
 import { useRoute } from '../state/useRoute'
+import { useDashboard } from '../state/useDashboard'
 import BackupsView from '../views/BackupsView'
 import CleanupView from '../views/CleanupView'
 import OrganizeView from '../views/OrganizeView'
@@ -33,9 +32,7 @@ export default function Shell() {
   const tree = lib.tree
   const allLinks = useMemo(() => (tree ? flattenLinks(tree, findTrash(tree)?.id) : []), [tree])
 
-  const locked = useMemo(() => lockedFolderIds(lib.marks), [lib.marks])
-
-  const overview = useMemo(() => (tree ? computeOverview(tree, Date.now()) : null), [tree])
+  const dash = useDashboard(tree)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -54,13 +51,13 @@ export default function Shell() {
     if (missingFolder) setView({ name: 'overview' }, { replace: true })
   }, [missingFolder, setView])
 
-  if (!tree) return <p className="loading">Lendo favoritos…</p>
+  if (!tree || !dash.dashboard) return <p className="loading">Lendo favoritos…</p>
+  const dashboard = dash.dashboard
 
   const view: View = missingFolder ? { name: 'overview' } : route
 
   const folders = sidebarFolders(tree)
   const options = folderOptions(tree)
-  const trash = findTrash(tree)
   const changeMode = (m: ViewMode) => { setMode(m); saveViewMode(m) }
 
   const dropLinks = (ids: string[], target: DropTarget) => {
@@ -74,11 +71,14 @@ export default function Shell() {
     else void lib.trash(ids)
   }
 
+  const backupNow = () => {
+    makeBackup().then(() => { lib.notify('Backup feito'); void dash.refresh() }, (e) => lib.notify(`Erro: ${e instanceof Error ? e.message : String(e)}`))
+  }
+
   const runAction = (action: PaletteAction) => {
     setPaletteOpen(false)
-    if (action === 'backup') {
-      makeBackup().then(() => lib.notify('Backup feito'), (e) => lib.notify(`Erro: ${e instanceof Error ? e.message : String(e)}`))
-    } else if (action === 'analisar-sem-uso') setView({ name: 'cleanup', tab: 'sem-uso' })
+    if (action === 'backup') backupNow()
+    else if (action === 'analisar-sem-uso') setView({ name: 'cleanup', tab: 'sem-uso' })
     else if (action === 'achar-duplicados') setView({ name: 'cleanup', tab: 'duplicados' })
     else if (action === 'testar-links') setView({ name: 'cleanup', tab: 'quebrados' })
     else if (action === 'abrir-organizar') setView({ name: 'organize' })
@@ -94,11 +94,8 @@ export default function Shell() {
     view.name === 'folder' ? folderPath(tree, view.id)
     : view.name === 'uncategorized' ? ['Sem categoria']
     : view.name === 'trash' ? ['Lixeira']
-    : view.name === 'cleanup' ? ['Limpeza']
-    : view.name === 'backups' ? ['Backups']
-    : view.name === 'organize' ? ['Organizar']
-    : ['Visão geral']
-  const listView = view.name === 'folder' || view.name === 'uncategorized' || view.name === 'trash' || view.name === 'overview'
+    : []
+  const listView = breadcrumb.length > 0
 
   let content
   if (view.name === 'folder') {
@@ -117,7 +114,7 @@ export default function Shell() {
   } else if (view.name === 'backups') {
     content = <BackupsView />
   } else {
-    content = <OverviewView tree={tree} overview={overview!} mode={mode} folderOptions={options} busy={lib.busy} onNavigate={setView} onMove={lib.move} onTrash={lib.trash} />
+    content = <OverviewView tree={tree} overview={dashboard} mode={mode} folderOptions={options} busy={lib.busy} onNavigate={setView} onMove={lib.move} onTrash={lib.trash} />
   }
 
   return (
@@ -125,17 +122,14 @@ export default function Shell() {
       <Sidebar
         folders={folders}
         view={view}
-        uncategorizedCount={uncategorizedLinks(tree).length}
-        cleanupCount={overview ? overview.inactive + overview.duplicates : 0}
-        trashCount={trash ? flattenLinks([trash]).length : 0}
-        lockedFolderIds={locked}
-        onToggleFolderLock={(id) => { void lib.setProtected([id], !locked.has(id), 'pasta') }}
+        dashboard={dashboard}
+        lastBackupAt={dash.lastBackupAt}
         onNavigate={setView}
         onNewFolder={newFolder}
         onDropLinks={dropLinks}
       />
       <div className="main">
-        <Topbar breadcrumb={breadcrumb} showViewMode={listView} mode={mode} onMode={changeMode} onOpenPalette={() => setPaletteOpen(true)} />
+        <Topbar breadcrumb={breadcrumb} showViewMode={listView} mode={mode} busy={lib.busy} onMode={changeMode} onOpenPalette={() => setPaletteOpen(true)} onBackup={backupNow} />
         <div className="content">{content}</div>
       </div>
       {paletteOpen && (
