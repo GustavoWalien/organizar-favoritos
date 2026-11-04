@@ -22,13 +22,13 @@ O código vive no WSL e o Chrome roda no Windows, então o `wxt dev` não conseg
 4. Depois de cada `npm run build`, clicar em recarregar na extensão em `chrome://extensions`.
 5. O manifesto tem uma `key` pública fixa, então o ID da extensão é sempre o mesmo, mesmo que a pasta do build mude de lugar. Os backups e o diário de desfazer ficam no IndexedDB atrelado a esse ID.
 
-**Status da verificação manual:** pendente. Os testes automatizados, o `compile` e o `build` passam; falta carregar no Chrome e conferir que o ícone aparece, o popup abre e "Abrir painel" abre a página completa.
+**Status da verificação manual:** primeira rodada feita em 2026-11-04, num perfil de teste do Chrome. Carregar, navegar (árvore, três modos, `Ctrl K`), backup, mover com desfazer e Limpeza funcionaram sem anormalidades. Os pontos de melhoria levantados estão em [`../melhorias.md`](../melhorias.md). Os subitens mais finos abaixo (exportar HTML para um perfil limpo, falha parcial, conferência do `dateLastUsed`) não foram conferidos um a um.
 
 ## Checklist de verificação manual (marcos 0 a 2)
 
 Itens que dependem do Chrome real e ainda não foram conferidos:
 
-- [ ] Carregar `.output/chrome-mv3`: ícone aparece, popup abre, "Abrir painel" abre a página completa.
+- [x] Carregar `.output/chrome-mv3`: ícone aparece, popup abre, "Abrir painel" abre a página completa.
 - [ ] Aba **Visão geral**: contagens batem com `chrome://bookmarks`; preencher `0001-date-last-used.md`.
 - [ ] **Backups**: "Fazer backup agora" cria um item; exportar HTML e importar em um perfil limpo do Chrome (a árvore bate); "Restaurar tudo" cria `Restaurado em ...` sem mexer em mais nada; restaurar um item pela busca.
 - [ ] **Limpeza**: analisar sem uso (conferir 3 itens conhecidos); mover 5 itens para a Lixeira → backup criado e **Desfazer** devolve cada um ao lugar; testar links numa pasta pequena e conferir à mão 3 "quebrados"; apagar um favorito pelo Chrome e aplicar um plano que o inclui (falha parcial é relatada); esvaziar a Lixeira e restaurar um item pelo backup.

@@ -24,6 +24,10 @@ A coluna `raiz` existe porque os títulos das raízes mudam com o idioma do Chro
 
 Se não há correspondência exata e a URL é única no navegador e no CSV, a linha vale como mover o favorito existente. Se a URL é repetida, vale como criar. A prévia diz qual dos dois aconteceu.
 
+## Quais endereços a importação aceita
+
+A exportação leva todos os favoritos, mas a importação só aceita `http:`, `https:` e `file:` (arquivos locais, como PDFs). Links `file:` não passam por `normalizeUrl`, que continua só para a web (duplicados, sem uso, teste de links); a chave deles no CSV é a URL sem o `#fragmento` (`structureUrlKey`). Outros esquemas (`javascript:`, `chrome:`, `data:`) aparecem na prévia como linhas que não puderam ser lidas: um CSV de fora não deve criar bookmarklets nem atalhos para páginas internas do Chrome. Adicionado em 2026-11-04, depois de o teste manual mostrar PDFs locais recusados na ida e volta.
+
 ## Por que a importação só cria e move
 
 Importar um CSV nunca remove nem renomeia nada: um CSV incompleto, ou de outro navegador, não pode apagar o que já existe. A importação cria pastas e favoritos que faltam, move favoritos para a pasta que o CSV indica e grava marcas. Pastas raiz do Chrome nunca são tocadas. Itens que já existem não são reordenados.
@@ -61,13 +65,13 @@ O Desfazer de uma importação volta as marcas ao estado de antes dela, mesmo qu
 **Nada abaixo foi verificado ainda.** A verificação precisa de uma pessoa no Chrome real (perfil de teste, `npm run build`) e do Google Planilhas. Os testes automatizados cobrem a lógica; a interface e o Planilhas ainda não foram conferidos.
 
 - [ ] Marcar favoritos e pastas; a caixa herdada fica travada; os filtros da tabela funcionam.
-- [ ] Exportar e abrir no Google Planilhas (Arquivo → Importar → Upload): acentos, emoji e colunas corretos?
+- [x] Exportar e abrir no Google Planilhas (Arquivo → Importar → Upload): acentos, emoji e colunas corretos? (2026-11-04: acentos corretos)
 - [ ] Editar `nao_mexer` no Planilhas, baixar como CSV e importar de volta: a marca muda e nada mais.
 - [ ] Importar o mesmo CSV em um perfil vazio: árvore igual. Importar de novo: "nada a importar".
 - [ ] Desfazer a importação.
 - [ ] Restaurar um backup com marcas.
 - [ ] Google Planilhas pode converter títulos que parecem número/data e apaga apóstrofo inicial isolado em títulos de links novos — conferir.
 
-BOM: pendente — decidir ao abrir o CSV exportado no Google Planilhas (começamos sem BOM)
+BOM: **não é necessário.** Em 2026-11-04 o CSV exportado sem BOM abriu no Google Planilhas com os acentos corretos.
 
-Resultado: _a preencher_. Se o BOM for necessário, ajustar `toCsv`/`exportStructureFile` e acrescentar o teste correspondente.
+Resultado: a exportação continua sem BOM. A ida e volta no mesmo navegador deu "nada a importar", como esperado, mas expôs dois pontos (favoritos `file:///` rejeitados e a mensagem da prévia), anotados em [`../melhorias.md`](../melhorias.md). Os testes da marca (marcar, herança, editar `nao_mexer` no Planilhas) e da restauração com marcas ficam para depois do redesenho da marca "não mexer".
