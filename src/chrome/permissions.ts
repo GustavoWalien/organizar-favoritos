@@ -9,3 +9,8 @@ export function requestLinkCheckPermission(): Promise<boolean> {
 export function hasLinkCheckPermission(): Promise<boolean> {
   return browser.permissions.contains({ origins: ['<all_urls>'] })
 }
+
+/** Pede acesso a uma origem (ex.: "https://api.anthropic.com/*"). Precisa ser chamado por um clique. */
+export function requestOriginPermission(origin: string): Promise<boolean> {
+  return browser.permissions.request({ origins: [origin] })
+}
