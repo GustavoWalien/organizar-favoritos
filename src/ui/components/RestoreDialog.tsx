@@ -42,7 +42,7 @@ export default function RestoreDialog({ snapshot, title, busy, onRestoreAll, onR
         <section className="restore-option">
           <div>
             <strong>Substituir pelos favoritos do backup</strong>
-            <p className="muted small">Volta exatamente como estava no backup. O que existe hoje vai para a Lixeira (nada é apagado), e o Desfazer volta tudo.</p>
+            <p className="muted small">Volta exatamente como estava no backup. O que existe hoje é apagado, mas antes vira um backup automático: para voltar atrás, é só restaurá-lo.</p>
           </div>
           <button className="primary" onClick={onRestoreReplace} disabled={busy}>Substituir…</button>
         </section>

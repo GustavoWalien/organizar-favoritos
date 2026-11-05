@@ -2,10 +2,12 @@ import 'fake-indexeddb/auto'
 import { IDBFactory } from 'fake-indexeddb'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { findTrash, TRASH_TITLE } from '../../src/core/cleanup'
-import { runPlan, undoLast } from '../../src/core/plan'
+import { runPlan } from '../../src/core/plan'
 import { planRestoreReplace } from '../../src/core/restore'
 import { createSnapshot } from '../../src/core/snapshot'
 import type { BmFolder, BmNode } from '../../src/core/types'
+import { lastEntry, saveEntry } from '../../src/storage/journal'
+import { listSnapshots } from '../../src/storage/snapshots'
 import { makeFakeApi } from '../fixtures/fakeApi'
 import { sampleTree } from '../fixtures/sampleTree'
 
@@ -39,45 +41,35 @@ const changed = (): BmNode[] => {
 const snap = createSnapshot(sampleTree, 'antes', 0)
 
 describe('planRestoreReplace', () => {
-  it('deixa cada raiz exatamente como no backup e manda o que existia para a Lixeira', async () => {
+  it('deixa cada raiz exatamente como no backup, sem levar nada para a Lixeira', async () => {
     const api = makeFakeApi(changed())
-    const plan = planRestoreReplace(snap, await api.getTree(), now)
-    const r = await runPlan(plan, api, 1)
+    const r = await runPlan(planRestoreReplace(snap, await api.getTree(), now), api, 1, undefined, { noUndo: true })
     expect(r.failed).toEqual([])
     const after = await api.getTree()
     for (const id of ['1', '2', '3']) expect(rootShape(after, id, true)).toEqual(rootShape(sampleTree, id))
-    const trash = shape(findTrash(after)!.children)
-    expect(trash.map((n) => n.t)).toEqual(['Velho', 'Programação', 'Novo', 'Exemplo'])
+    expect(shape(findTrash(after)!.children).map((n) => n.t)).toEqual(['Velho'])
   })
 
-  it('nunca apaga nada: só move para a Lixeira e cria', async () => {
+  it('a Lixeira atual não é apagada', () => {
     const plan = planRestoreReplace(snap, changed(), now)
-    expect(plan.operations.every((o) => o.op !== 'remove')).toBe(true)
-  })
-
-  it('cria a Lixeira em Outros favoritos quando ela não existe', async () => {
-    const api = makeFakeApi(structuredClone(sampleTree))
-    const plan = planRestoreReplace(snap, await api.getTree(), now)
-    expect(plan.operations[0]).toMatchObject({ op: 'create-folder', parentId: '2', title: TRASH_TITLE })
-    await runPlan(plan, api, 1)
-    const after = await api.getTree()
-    expect(rootShape(after, '1')).toEqual(rootShape(sampleTree, '1'))
-    expect(shape(findTrash(after)!.children).map((n) => n.t)).toEqual(['Dev', 'Exemplo'])
+    expect(plan.operations).not.toContainEqual({ op: 'remove', id: '30' })
   })
 
   it('não recria a Lixeira que estava no backup', async () => {
     const backup = createSnapshot(changed(), 'com lixeira', 0)
     const api = makeFakeApi(structuredClone(sampleTree))
-    await runPlan(planRestoreReplace(backup, await api.getTree(), now), api, 1)
+    await runPlan(planRestoreReplace(backup, await api.getTree(), now), api, 1, undefined, { noUndo: true })
     const other = roots(await api.getTree())[1] as BmFolder
-    expect(other.children.filter((c) => c.kind === 'folder' && c.title === TRASH_TITLE)).toHaveLength(1)
+    expect(other.children.filter((c) => c.kind === 'folder' && c.title === TRASH_TITLE)).toHaveLength(0)
   })
 
-  it('o Desfazer volta à árvore de antes', async () => {
+  it('o backup automático feito antes guarda a árvore de antes, e o plano não entra no Desfazer', async () => {
     const api = makeFakeApi(changed())
     const before = shape(await api.getTree())
-    await runPlan(planRestoreReplace(snap, await api.getTree(), now), api, 1)
-    await undoLast(api)
-    expect(shape(await api.getTree())).toEqual(before)
+    await saveEntry({ planId: 'anterior', label: 'x', appliedAt: 0, snapshotId: 's', inverse: [] })
+    await runPlan(planRestoreReplace(snap, await api.getTree(), now), api, 1, undefined, { noUndo: true })
+    const [auto] = await listSnapshots()
+    expect(shape(auto!.tree)).toEqual(before)
+    expect((await lastEntry())?.planId).toBe('anterior')
   })
 })
