@@ -40,7 +40,7 @@ Os marcos 0 a 3 e o redesenho têm testes automatizados da lógica (406 testes).
 - **Exportar e importar a estrutura em CSV:** o CSV leva pastas, favoritos e marcas, e serve para levar a árvore a outro navegador ou conferir numa planilha. A importação mostra uma **prévia** (criados, movidos, marcas alteradas, linhas ignoradas) e deixa desmarcar o que não quer. Ela só cria e move, nunca remove, faz um backup próprio antes e tem **Desfazer**. A Lixeira da extensão não vai no CSV, e linhas dentro dela são ignoradas na importação. Pastas irmãs com o mesmo nome viram uma só ao importar em outro navegador. Para abrir no Google Planilhas: **Arquivo → Importar → Upload**.
 
 **Sugestões da IA**
-- Escolha o que organizar (sem categoria, dentro de uma pasta ou tudo) e o provedor: **Anthropic** (padrão Claude Opus 5.5) ou **compatível com OpenAI** (OpenAI, Gemini, Groq, OpenRouter, Ollama).
+- Escolha o que organizar (sem categoria, dentro de uma pasta ou tudo) e o provedor: **Anthropic** (padrão Claude Haiku 5.5, o mais barato; Sonnet e Opus como opção) ou **compatível com OpenAI** (OpenAI, Gemini, Groq, OpenRouter, Ollama).
 - Antes de enviar, a tela mostra o que sai do navegador: só **título e domínio** de cada favorito e os nomes das pastas, nunca o endereço completo, com uma estimativa de custo. Favoritos "não mexer" e a Lixeira ficam de fora.
 - Uma regra local resolve sem IA os favoritos cujo domínio já mora numa pasta.
 - A proposta aparece agrupada por pasta (existente ou nova), com motivo e confiança; os de confiança baixa vêm desmarcados. Dá para aceitar por item ou por pasta, mudar o destino e renomear pasta nova. Aplicar faz backup e tem Desfazer.

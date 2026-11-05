@@ -10,9 +10,9 @@ import { maskKey, type ProviderConfig } from '../../storage/aiStore'
 import type { AiSuggestionsState } from '../state/useAiSuggestions'
 
 const MODELS = [
-  { id: 'claude-opus-5-5', label: 'Claude Opus 5.5 (padrão)' },
+  { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5 (padrão, mais barato)' },
   { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5' },
-  { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5 (mais barato)' },
+  { id: 'claude-opus-5-5', label: 'Claude Opus 5.5 (mais caro)' },
 ]
 const fmt = (n: number) => n.toLocaleString('pt-BR')
 
@@ -35,7 +35,7 @@ export default function AiSetup({ tree, marks, ai, initialKind = 'sem-categoria'
   const [editing, setEditing] = useState(!saved)
   const [draftKind, setDraftKind] = useState<ProviderConfig['kind']>(saved?.kind ?? 'anthropic')
   const [apiKey, setApiKey] = useState('')
-  const [model, setModel] = useState(saved?.model ?? 'claude-opus-5-5')
+  const [model, setModel] = useState(saved?.model ?? 'claude-haiku-5-5')
   const [baseUrl, setBaseUrl] = useState(saved?.kind === 'openai-compat' ? saved.baseUrl : 'https://api.openai.com/v1')
   const [testing, setTesting] = useState(false)
 
@@ -48,7 +48,7 @@ export default function AiSetup({ tree, marks, ai, initialKind = 'sem-categoria'
   const draft = (): ProviderConfig => {
     const keyToUse = keyForDraft(draftKind, baseUrl, apiKey, saved)
     return draftKind === 'anthropic'
-      ? { kind: 'anthropic', apiKey: keyToUse, model: MODELS.some((m) => m.id === model) ? model : 'claude-opus-5-5' }
+      ? { kind: 'anthropic', apiKey: keyToUse, model: MODELS.some((m) => m.id === model) ? model : 'claude-haiku-5-5' }
       : { kind: 'openai-compat', baseUrl: baseUrl.trim(), apiKey: keyToUse, model: model.trim() }
   }
   const test = async () => {
@@ -110,7 +110,7 @@ export default function AiSetup({ tree, marks, ai, initialKind = 'sem-categoria'
           ) : (
             <>
               <div className="segmented" role="radiogroup" aria-label="Provedor">
-                <button role="radio" aria-checked={draftKind === 'anthropic'} onClick={() => { setDraftKind('anthropic'); setModel('claude-opus-5-5') }}>Anthropic</button>
+                <button role="radio" aria-checked={draftKind === 'anthropic'} onClick={() => { setDraftKind('anthropic'); setModel('claude-haiku-5-5') }}>Anthropic</button>
                 <button role="radio" aria-checked={draftKind === 'openai-compat'} onClick={() => { setDraftKind('openai-compat'); setModel('') }}>Compatível com OpenAI</button>
               </div>
               {draftKind === 'openai-compat' && (
