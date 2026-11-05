@@ -44,3 +44,11 @@ Pontos levantados durante os testes manuais. Ficam aqui até serem priorizados e
 | 22 | Docs | A seção 6.2 do design da IA ainda descreve `pasta` como texto e `nova` como booleano (a 5.3 e o código usam número e texto). | Revisão final |
 | 23 | Privacidade | O SDK da Anthropic manda cabeçalhos técnicos (`X-Stainless-*`: sistema, versão do runtime). Não são dados seus, mas vale citar no README ou desligar. | Revisão final |
 | 24 | IA | Muitos favoritos sem título vão para a IA só com o domínio; a sugestão para eles tende a ser fraca. | Teste no Chromium |
+
+## Do teste da IA com chave real (2026-11-05)
+
+| # | Área | Ponto | Origem |
+|---|---|---|---|
+| 25 | Visual | Mostrar o favicon do site ao lado de cada favorito (listas, árvore, revisão da IA, Limpeza), para identificar o site mais rápido e deixar mais bonito. Caminho provável: permissão `favicon` do Chrome (MV3) e `chrome-extension://<id>/_favicon/?pageUrl=<url>&size=16`, que usa o cache do próprio Chrome, sem pedir nada aos sites. Sem favicon em cache, mostrar um ícone neutro. | Pedido do Gustavo |
+| 26 | IA | A estimativa de custo pedida no roteiro (~US$ 0,10) estava errada: "Sem categoria" nos favoritos reais deu 10 lotes e teto de US$ 1,37 com o Opus. Comparar com o custo real no console e, se preciso, ajustar a fórmula ou sugerir o Sonnet no texto. | Teste do Gustavo |
+| 27 | IA | Com o Opus, "Sem categoria" (10 lotes) custou ~US$ 1,00 e as sugestões ficaram ruins. Hipóteses: a IA só vê título e domínio (sem o caminho da URL), as pastas candidatas vão só pelo nome (sem exemplos do que já há nelas), o esforço de raciocínio é baixo e cada lote cria pastas novas sem visão do conjunto. Levantar com o Gustavo o que ficou ruim e comparar com o Haiku antes de mexer. | Teste do Gustavo |
