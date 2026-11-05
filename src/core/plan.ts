@@ -26,6 +26,8 @@ export interface RunStore {
 export interface RunOptions {
   /** Reaproveita o backup automático feito há menos de 10 minutos em vez de criar outro. */
   shareBackup?: boolean
+  /** Não grava no histórico do Desfazer: para planos cujo caminho de volta é restaurar o backup automático. */
+  noUndo?: boolean
 }
 
 export interface UndoStore {
@@ -167,7 +169,7 @@ export async function runPlan(
     marksError = r.error
   }
   // Um plano sem inverso (só `remove`) e sem marcas não deve esconder o desfazer do plano anterior.
-  if (inverse.length > 0 || entry.marksBefore) await store.saveEntry(entry)
+  if (!opts.noUndo && (inverse.length > 0 || entry.marksBefore)) await store.saveEntry(entry)
   const result: RunResult = { applied, failed, entry, idMap: Object.fromEntries(realIds) }
   if (marksError !== undefined) result.marksError = marksError
   return result

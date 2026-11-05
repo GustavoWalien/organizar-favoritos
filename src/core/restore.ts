@@ -72,25 +72,21 @@ export function planRestoreAll(snapshot: Snapshot, current: BmNode[], now: Date)
 }
 
 /**
- * Substitui a árvore atual pela do backup: o que existe hoje em cada raiz vai para a Lixeira (nada é apagado)
- * e o conteúdo de cada raiz do backup é recriado na raiz correspondente. A Lixeira do backup não é recriada.
+ * Substitui a árvore atual pela do backup: apaga o que existe hoje em cada raiz e recria o conteúdo de cada raiz
+ * do backup na raiz correspondente. A Lixeira atual fica como está, e a do backup não é recriada.
+ * Não tem Desfazer: o backup automático feito antes pelo `runPlan` é o caminho de volta (use `noUndo`).
  */
 export function planRestoreReplace(snapshot: Snapshot, current: BmNode[], now: Date): Plan {
   const nextTemp = counter()
   const ops: Operation[] = []
   const r = newRecreator(ops, nextTemp, snapshot)
   const isTrash = (n: BmNode) => n.kind === 'folder' && n.title === TRASH_TITLE
+  const trashId = findTrash(current)?.id
   const otherId = otherBookmarksId(current)
-
-  let trashId = findTrash(current)?.id
-  if (trashId === undefined) {
-    trashId = nextTemp()
-    ops.push({ op: 'create-folder', tempId: trashId, parentId: otherId, title: TRASH_TITLE })
-  }
 
   const currentRoots = (current[0]?.kind === 'folder' ? current[0].children : []).filter((n) => n.kind === 'folder')
   for (const root of currentRoots) {
-    for (const child of root.children) if (child.id !== trashId) ops.push({ op: 'move', id: child.id, toParentId: trashId })
+    for (const child of root.children) if (child.id !== trashId) ops.push({ op: 'remove', id: child.id })
   }
 
   const backupRoots = snapshot.tree[0]?.kind === 'folder' ? snapshot.tree[0].children : []

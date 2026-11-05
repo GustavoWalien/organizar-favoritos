@@ -58,7 +58,7 @@ export type Operation =
   /** `tempId` (opcional) permite que uma `PlanMark` do mesmo plano aponte para o link novo. */
   | { op: 'create-link'; tempId?: string; parentId: string; title: string; url: string }
   | { op: 'move'; id: string; toParentId: string; toIndex?: number }
-  /** Só usado para esvaziar a Lixeira; não tem inverso. */
+  /** Usado para esvaziar a Lixeira e para restaurar substituindo; não tem inverso. */
   | { op: 'remove'; id: string }
 
 /** Mudança de marca dentro de um plano; `target` é um id real ou um `tempId` do próprio plano. */

@@ -31,11 +31,9 @@ interface Props {
   lastExportAt: number | null
   /** Depois de backup, exportação ou restauração: o painel relê os números. */
   onChanged: () => void
-  /** Aviso do painel, com o botão Desfazer do plano aplicado. */
-  onNotify: (message: string, undoable?: boolean, planId?: string) => void
 }
 
-export default function BackupsView({ tree, lastExportAt, onChanged, onNotify }: Props) {
+export default function BackupsView({ tree, lastExportAt, onChanged }: Props) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [restoring, setRestoring] = useState<Snapshot | null>(null)
   const [query, setQuery] = useState('')
@@ -80,16 +78,16 @@ export default function BackupsView({ tree, lastExportAt, onChanged, onNotify }:
 
   const restoreReplace = (s: Snapshot) => run(async () => {
     const plan = planRestoreReplace(s, await chromeBookmarksApi.getTree(), new Date())
-    const moved = plan.operations.filter((o) => o.op === 'move').length
+    const removed = plan.operations.filter((o) => o.op === 'remove').length
     const msg = `Trocar todos os seus favoritos pelos do backup de ${when(s.createdAt)}?\n\n`
-      + `O que existe hoje (${moved} ${moved === 1 ? 'item' : 'itens'} na Barra, em Outros e em Celular) vai para a Lixeira. Nada é apagado.\n`
-      + 'Um backup do estado atual é feito antes, e o Desfazer volta tudo.'
+      + `O que existe hoje (${removed} ${removed === 1 ? 'item' : 'itens'} na Barra, em Outros e em Celular) será apagado. A Lixeira fica como está.\n`
+      + 'Um backup automático do estado atual é feito antes: para voltar atrás, restaure esse backup.'
     if (!window.confirm(msg)) return 'Restauração cancelada.'
-    const r = await runPlan(plan, chromeBookmarksApi, Date.now())
+    const at = Date.now()
+    const r = await runPlan(plan, chromeBookmarksApi, at, undefined, { noUndo: true })
     setRestoring(null)
-    const done = r.failed.length ? `Restaurado com ${r.failed.length} falha(s).` : 'Favoritos substituídos pelos do backup. O que havia antes está na Lixeira.'
-    onNotify(done, r.entry.inverse.length > 0, plan.id)
-    return done
+    const back = `Para voltar atrás, restaure o backup automático de ${when(at)}.`
+    return r.failed.length ? `Restaurado com ${r.failed.length} falha(s). ${back}` : `Favoritos substituídos pelos do backup. ${back}`
   })
 
   const restoreItem = (s: Snapshot, id: string) => run(async () => {
@@ -114,7 +112,7 @@ export default function BackupsView({ tree, lastExportAt, onChanged, onNotify }:
       <div className="page-head">
         <div>
           <h1>Backups</h1>
-          <p className="muted">Um backup é feito sozinho antes de cada mudança. Restaurar nunca apaga nada: você escolhe substituir (o que existe hoje vai para a Lixeira) ou restaurar lado a lado, numa pasta nova.</p>
+          <p className="muted">Um backup é feito sozinho antes de cada mudança. Para restaurar, você escolhe substituir os favoritos de hoje pelos do backup (o estado atual vira um backup antes) ou restaurar lado a lado, numa pasta nova.</p>
         </div>
         <button className="primary big" onClick={backupNow} disabled={busy}><Icon name="archive" /> Fazer backup agora</button>
       </div>
