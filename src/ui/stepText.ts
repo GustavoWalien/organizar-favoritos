@@ -24,8 +24,8 @@ export function stepText(step: NextStep): { title: string; hint: string; action:
         : { title: `Revisar ${n(c, 'favorito sem uso', 'favoritos sem uso')}`, hint: 'não abertos no período escolhido', action: 'Revisar' }
     case 'sem-categoria':
       return step.done
-        ? { title: 'Tudo em pastas', hint: 'nenhum favorito solto', action: 'Abrir' }
-        : { title: `Dar pasta a ${n(c, 'favorito sem categoria', 'favoritos sem categoria')}`, hint: 'arrastando, ou com as sugestões da IA (em breve)', action: 'Abrir' }
+        ? { title: 'Tudo em pastas', hint: 'nenhum favorito solto', action: 'Sugerir com IA' }
+        : { title: `Dar pasta a ${n(c, 'favorito sem categoria', 'favoritos sem categoria')}`, hint: 'a IA sugere, você revisa e aplica', action: 'Sugerir com IA' }
     case 'backup':
       return step.done
         ? { title: 'Backup em dia', hint: 'o último tem menos de 7 dias', action: 'Fazer backup' }
