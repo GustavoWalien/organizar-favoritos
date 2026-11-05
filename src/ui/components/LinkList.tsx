@@ -3,6 +3,7 @@ import { hasMore, pageOf } from '../../core/paging'
 import type { BmLink } from '../../core/types'
 import { domainOf, lastUsedLabel } from '../format'
 import type { ViewMode } from '../viewMode'
+import Favicon from './Favicon'
 
 interface Props {
   links: BmLink[]
@@ -55,7 +56,7 @@ export default function LinkList({ links, mode, selected, onToggle, onToggleAll,
           {shown.map((l) => (
             <div className={`row${isSel(l.id) ? ' selected' : ''}`} role="listitem" key={l.id} {...drag(l)}>
               {controls(l)}
-              <a href={l.url} target="_blank" rel="noreferrer" className="row-title" draggable={false}>{titleOf(l)}</a>
+              <a href={l.url} target="_blank" rel="noreferrer" className="row-title" draggable={false}><Favicon url={l.url} />{titleOf(l)}</a>
               <span className="muted">{domainOf(l.url)}</span>
               <span className="muted">{lastUsedLabel(l.dateLastUsed, now)}</span>
             </div>
@@ -67,7 +68,7 @@ export default function LinkList({ links, mode, selected, onToggle, onToggleAll,
           {shown.map((l) => (
             <li className={`card${isSel(l.id) ? ' selected' : ''}`} key={l.id} {...drag(l)}>
               {selectable && <div className="card-controls">{controls(l)}</div>}
-              <a href={l.url} target="_blank" rel="noreferrer" className="row-title" draggable={false}>{titleOf(l)}</a>
+              <a href={l.url} target="_blank" rel="noreferrer" className="row-title" draggable={false}><Favicon url={l.url} />{titleOf(l)}</a>
               <span className="muted">{domainOf(l.url)}</span>
             </li>
           ))}
@@ -78,7 +79,7 @@ export default function LinkList({ links, mode, selected, onToggle, onToggleAll,
           {shown.map((l) => (
             <li className={isSel(l.id) ? 'selected' : undefined} key={l.id} {...drag(l)}>
               {controls(l)}
-              <a href={l.url} target="_blank" rel="noreferrer" draggable={false}>{titleOf(l)}</a>
+              <a href={l.url} target="_blank" rel="noreferrer" draggable={false}><Favicon url={l.url} />{titleOf(l)}</a>
               <span className="muted"> · {domainOf(l.url)}</span>
             </li>
           ))}

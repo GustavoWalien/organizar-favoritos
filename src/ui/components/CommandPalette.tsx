@@ -3,6 +3,7 @@ import type { FolderOption } from '../../core/folders'
 import { searchPalette, type PaletteAction, type PaletteItem } from '../../core/palette'
 import type { FlatLink } from '../../core/types'
 import { domainOf } from '../format'
+import Favicon from './Favicon'
 
 interface Props {
   links: FlatLink[]
@@ -66,7 +67,7 @@ export default function CommandPalette({ links, folders, onClose, onPickLink, on
               <button className={i === current ? 'active' : undefined} onClick={() => run(item)} tabIndex={-1}>
                 {item.kind === 'link' && (
                   <>
-                    <b>{item.title || domainOf(item.url)}</b> <span className="muted">{domainOf(item.url)}</span>
+                    <Favicon url={item.url} /><b>{item.title || domainOf(item.url)}</b> <span className="muted">{domainOf(item.url)}</span>
                     <span className="palette-meta">{item.path.join(' › ')}</span>
                   </>
                 )}

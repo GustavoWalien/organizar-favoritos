@@ -10,6 +10,7 @@ import MovePicker from '../components/MovePicker'
 import SelectionBar from '../components/SelectionBar'
 import { domainOf } from '../format'
 import { applyImport, describeImport, exportStructureFile, importFileProblem, type ImportPreparation, previewImport } from '../marksActions'
+import Favicon from '../components/Favicon'
 
 interface Props {
   tree: BmNode[]
@@ -158,7 +159,7 @@ export default function OrganizeView({ tree, marks, folderOptions, busy, onMove,
                     <td className="col-check"><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} aria-label={`Selecionar ${title}`} /></td>
                     <td>
                       <div className="cell-title">
-                        <a href={r.url} target="_blank" rel="noreferrer" className="row-title">{title}</a>
+                        <a href={r.url} target="_blank" rel="noreferrer" className="row-title"><Favicon url={r.url} />{title}</a>
                         <span className="muted">{domainOf(r.url)}</span>
                       </div>
                     </td>

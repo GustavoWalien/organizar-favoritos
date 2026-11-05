@@ -6,10 +6,12 @@ import type { FolderOption } from '../../core/folders'
 import { runPlan } from '../../core/plan'
 import type { MarksMap } from '../../core/marks'
 import type { BmNode } from '../../core/types'
+import { flattenLinks } from '../../core/tree'
 import { marksStore } from '../../storage/flags'
 import type { Proposal } from '../../storage/aiStore'
 import type { AiSuggestionsState } from '../state/useAiSuggestions'
 import { ageLabel } from '../format'
+import Favicon from './Favicon'
 import Icon from './Icon'
 import MovePicker from './MovePicker'
 
@@ -37,6 +39,7 @@ export default function AiReview({ tree, marks, proposal: p, ai, onNotify }: Pro
   const [collapsed, setCollapsed] = useState(false)
   const [moving, setMoving] = useState<string[] | null>(null)
   const [busy, setBusy] = useState(false)
+  const urlOf = useMemo(() => new Map(flattenLinks(tree).map((l) => [l.id, l.url])), [tree])
 
   // Item cujo destino é a pasta onde já está: não é mudança.
   const inPlace = (it: Proposal['items'][number]) => it.newPath.length === 0 && it.folderId === it.fromFolderId
@@ -124,7 +127,7 @@ export default function AiReview({ tree, marks, proposal: p, ai, onNotify }: Pro
             {!collapsed && g.items.map((it) => (
               <div key={it.itemId} className="ai-row">
                 <input type="checkbox" checked={it.accepted} onChange={(e) => ai.setAccepted([it.itemId], e.target.checked)} aria-label={`Aceitar ${it.title}`} />
-                <span className="ellipsis" title={it.reason}>{it.title || '(sem título)'} <span className="muted">· {it.domain}</span></span>
+                <span className="ellipsis" title={it.reason}><Favicon url={urlOf.get(it.itemId) ?? `https://${it.domain}/`} />{it.title || '(sem título)'} <span className="muted">· {it.domain}</span></span>
                 <span className="muted ellipsis">{it.reason}</span>
                 <span className={`tag conf-${it.confidence}`}>{CONF_LABEL[it.confidence]}</span>
                 <button className="link-button" onClick={() => setMoving([it.itemId])}>Mudar pasta</button>
