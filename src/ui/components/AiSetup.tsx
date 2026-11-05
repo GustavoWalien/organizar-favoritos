@@ -32,7 +32,7 @@ export default function AiSetup({ tree, marks, ai, initialKind = 'sem-categoria'
   const [allowNew, setAllowNew] = useState(true)
 
   const saved = ai.provider
-  const [editing, setEditing] = useState(!saved)
+  const [editing, setEditing] = useState(false)
   const [draftKind, setDraftKind] = useState<ProviderConfig['kind']>(saved?.kind ?? 'anthropic')
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState(saved?.model ?? 'claude-haiku-5-5')
@@ -105,6 +105,7 @@ export default function AiSetup({ tree, marks, ai, initialKind = 'sem-categoria'
             <div className="ai-saved">
               <span>{saved.kind === 'anthropic' ? 'Anthropic' : `Compatível com OpenAI · ${new URL(saved.baseUrl).host}`} · {saved.model}{saved.apiKey ? ` · chave ${maskKey(saved.apiKey)}` : ''}</span>
               <button onClick={() => setEditing(true)} disabled={busy}>Trocar</button>
+              <button onClick={() => { if (window.confirm('Remover o provedor e apagar a chave deste navegador?')) void ai.removeProvider() }} disabled={busy}>Remover chave</button>
               <p className="ok-text small">Conectado · a chave fica só neste navegador</p>
             </div>
           ) : (

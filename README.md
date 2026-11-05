@@ -10,7 +10,7 @@ Encontre favoritos esquecidos, duplicados e quebrados, coloque cada um na pasta 
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![WXT](https://img.shields.io/badge/WXT-extens%C3%A3o-67D55E)
-![Testes](https://img.shields.io/badge/testes-474%20passando-2EA44F?logo=vitest&logoColor=white)
+![Testes](https://img.shields.io/badge/testes-475%20passando-2EA44F?logo=vitest&logoColor=white)
 ![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)
 
 [Instalar](#-instalar) · [O que ela faz](#-o-que-ela-faz) · [Telas](#-telas) · [Privacidade](#-privacidade-e-permissões) · [Para desenvolvedores](#-para-desenvolvedores)
@@ -114,9 +114,9 @@ A extensão ainda não está na Chrome Web Store: por enquanto, você gera o bui
 A IA é opcional. Para usar, você precisa de uma **chave de API** do provedor. Assinaturas como ChatGPT Plus ou Claude Pro não servem, porque não dão acesso à API.
 
 - **Anthropic:** crie a chave em [console.anthropic.com](https://console.anthropic.com), em *Settings → API Keys*, e coloque créditos em *Billing*. O modelo padrão é o **Claude Haiku 5.5**, o mais barato: pela estimativa da própria extensão, organizar mil favoritos custa alguns centavos de dólar.
-- **Compatível com OpenAI:** informe o endereço da API, a chave e o modelo.
+- **Compatível com OpenAI:** informe o endereço da API, a chave e o modelo. O endereço precisa ser `https://`; `http://` só é aceito na sua máquina ou rede local (Ollama, por exemplo).
 
-A chave fica guardada só no armazenamento local deste navegador, sem criptografia: ela não vai nos backups nem na sincronização do Chrome, mas quem tiver acesso ao seu perfil do Chrome consegue lê-la. Use uma chave só para isso e defina um limite de gasto no console do provedor. A cobrança vem na sua conta do provedor.
+A chave fica guardada só no armazenamento local deste navegador, sem criptografia: ela não vai nos backups nem na sincronização do Chrome, mas quem tiver acesso ao seu perfil do Chrome consegue lê-la. Dá para apagá-la a qualquer momento em **Remover chave**. Use uma chave só para isso e defina um limite de gasto no console do provedor. A cobrança vem na sua conta do provedor.
 
 ## 🔒 Privacidade e permissões
 
@@ -143,7 +143,7 @@ A chave fica guardada só no armazenamento local deste navegador, sem criptograf
 - **React 19** e **TypeScript** (modo estrito)
 - **IndexedDB** (`idb`) para backups e o histórico do Desfazer
 - **`@anthropic-ai/sdk`** com saída estruturada (JSON Schema), e `fetch` para as APIs compatíveis com OpenAI
-- **Vitest** e `fake-indexeddb`: **474 testes**, quase todos da lógica, sem precisar do Chrome
+- **Vitest** e `fake-indexeddb`: **475 testes**, quase todos da lógica, sem precisar do Chrome
 
 ### Rodando localmente
 
@@ -214,6 +214,6 @@ O design completo e a pesquisa de soluções existentes estão em [`PLANO.md`](P
 <details>
 <summary><b>English summary</b></summary>
 
-**Organizar Favoritos** is a Chrome extension (Manifest V3, React 19, TypeScript, WXT) that helps you clean up and organize your bookmarks safely. It finds unused, duplicate and broken bookmarks and empty folders, lets you review everything before applying, and moves items to a Trash folder instead of deleting them. An optional AI assistant (Anthropic or any OpenAI-compatible API, with your own key) suggests a folder for each loose bookmark; you review and apply only what you accept. Every change is a computed *plan* that runs only after an automatic backup succeeds, and keeps an undo journal. The extension sends your bookmarks to no server of its own; only titles and domains go to the AI provider, and only when you explicitly ask for suggestions. The core logic is framework-free and covered by 474 Vitest tests.
+**Organizar Favoritos** is a Chrome extension (Manifest V3, React 19, TypeScript, WXT) that helps you clean up and organize your bookmarks safely. It finds unused, duplicate and broken bookmarks and empty folders, lets you review everything before applying, and moves items to a Trash folder instead of deleting them. An optional AI assistant (Anthropic or any OpenAI-compatible API, with your own key) suggests a folder for each loose bookmark; you review and apply only what you accept. Every change is a computed *plan* that runs only after an automatic backup succeeds, and keeps an undo journal. The extension sends your bookmarks to no server of its own; only titles and domains go to the AI provider, and only when you explicitly ask for suggestions. The core logic is framework-free and covered by 475 Vitest tests.
 
 </details>

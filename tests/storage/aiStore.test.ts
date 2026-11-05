@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { KeyValueStore } from '../../src/chrome/localStore'
-import { clearProposal, loadProposal, loadProvider, maskKey, saveProposal, saveProvider, type Proposal } from '../../src/storage/aiStore'
+import { clearProposal, clearProvider, loadProposal, loadProvider, maskKey, saveProposal, saveProvider, type Proposal } from '../../src/storage/aiStore'
 
 const mem = (init: Record<string, unknown> = {}): KeyValueStore => {
   const d = new Map(Object.entries(init))
@@ -25,6 +25,15 @@ describe('aiStore', () => {
     expect(await loadProposal(s)).toEqual(proposal)
     await clearProposal(s)
     expect(await loadProposal(s)).toBeNull()
+  })
+
+  it('clearProvider apaga a chave do armazenamento', async () => {
+    const d = new Map<string, unknown>()
+    const s: KeyValueStore = { get: async (k) => d.get(k), set: async (k, v) => { d.set(k, v) } }
+    await saveProvider({ kind: 'anthropic', apiKey: 'sk-ant-SEGREDO', model: 'claude-haiku-5-5' }, s)
+    await clearProvider(s)
+    expect(await loadProvider(s)).toBeNull()
+    expect(JSON.stringify([...d])).not.toContain('SEGREDO')
   })
 
   it('dados inválidos viram null', async () => {

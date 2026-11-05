@@ -96,6 +96,11 @@ export async function saveProvider(cfg: ProviderConfig, store: KeyValueStore = c
   await store.set(PROVIDER_KEY, cfg)
 }
 
+/** Esquece o provedor e a chave: o valor guardado é sobrescrito. */
+export async function clearProvider(store: KeyValueStore = chromeLocalStore): Promise<void> {
+  await store.set(PROVIDER_KEY, null)
+}
+
 export async function loadProposal(store: KeyValueStore = chromeLocalStore): Promise<Proposal | null> {
   return parseProposal(await read(store, PROPOSAL_KEY))
 }
