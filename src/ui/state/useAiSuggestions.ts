@@ -6,7 +6,7 @@ import type { AiScope } from '../../ai/scope'
 import { requestOriginPermission } from '../../chrome/permissions'
 import type { MarksMap } from '../../core/marks'
 import type { BmNode } from '../../core/types'
-import { clearProposal, loadProposal, loadProvider, saveProposal, saveProvider, type Proposal, type ProviderConfig } from '../../storage/aiStore'
+import { clearProposal, clearProvider, loadProposal, loadProvider, saveProposal, saveProvider, type Proposal, type ProviderConfig } from '../../storage/aiStore'
 
 export interface AiSuggestionsState {
   provider: ProviderConfig | null
@@ -15,6 +15,8 @@ export interface AiSuggestionsState {
   error: string | null
   /** Testar conexão: pede a permissão do host (precisa vir de um clique), chama o provedor e grava se der certo. */
   testProvider: (cfg: ProviderConfig) => Promise<boolean>
+  /** Apaga o provedor e a chave deste navegador. */
+  removeProvider: () => Promise<void>
   generate: (scope: AiScope) => Promise<void>
   cancel: () => void
   setAccepted: (itemIds: string[], value: boolean) => void
@@ -63,8 +65,17 @@ export function useAiSuggestions(tree: BmNode[] | null, marks: MarksMap): AiSugg
     }
   }, [])
 
+  const removeProvider = useCallback(async () => {
+    await clearProvider()
+    setProvider(null)
+    setError(null)
+  }, [])
+
   const generate = useCallback(async (scope: AiScope) => {
     if (!tree || !provider) return
+    // Uma configuração guardada antes de uma regra nova também precisa passar por ela.
+    const problem = configProblem(provider)
+    if (problem) { setError(problem); return }
     if (proposal && proposal.items.length > 0 && !window.confirm('Já existe uma proposta não aplicada. Gerar uma nova a substitui. Continuar?')) return
     setError(null)
     abort.current = new AbortController()
@@ -113,5 +124,5 @@ export function useAiSuggestions(tree: BmNode[] | null, marks: MarksMap): AiSugg
     setProposal(null)
   }, [setProposal])
 
-  return { provider, proposal, progress, error, testProvider, generate, cancel, setAccepted, retarget, rename, discard }
+  return { provider, proposal, progress, error, testProvider, removeProvider, generate, cancel, setAccepted, retarget, rename, discard }
 }

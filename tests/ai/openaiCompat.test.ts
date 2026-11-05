@@ -80,6 +80,12 @@ describe('configuração', () => {
     expect(configProblem({ ...cfg, baseUrl: 'api.openai.com/v1' })).toMatch(/URL base inválida/)
     expect(configProblem({ ...cfg, model: ' ' })).toMatch(/modelo/i)
     expect(configProblem(cfg)).toBeNull()
+    for (const host of ['http://localhost:11434/v1', 'http://127.0.0.1:1234/v1', 'http://[::1]:11434/v1', 'http://192.168.0.10:11434/v1', 'http://10.0.0.2/v1', 'http://172.20.1.1/v1', 'http://servidor.local/v1']) {
+      expect(configProblem({ ...cfg, baseUrl: host })).toBeNull()
+    }
+    for (const host of ['http://api.exemplo.com/v1', 'http://8.8.8.8/v1', 'http://172.32.0.1/v1', 'http://localhost.exemplo.com/v1', 'http://192.168.0.10.exemplo.com/v1']) {
+      expect(configProblem({ ...cfg, baseUrl: host })).toMatch(/https/)
+    }
     expect(configProblem({ kind: 'anthropic', apiKey: '', model: 'claude-opus-5-5' })).toMatch(/chave/i)
   })
 

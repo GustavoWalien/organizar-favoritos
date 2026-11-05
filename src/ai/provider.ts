@@ -33,7 +33,20 @@ export function configProblem(cfg: ProviderConfig): string | null {
   } catch {
     return 'URL base inválida: use o endereço completo, como https://api.openai.com/v1.'
   }
+  if (cfg.baseUrl.trim().toLowerCase().startsWith('http:') && !isLocalHost(new URL(cfg.baseUrl).hostname)) {
+    return 'Por segurança, use https://: com http://, a chave e os títulos viajam sem criptografia. Só a sua máquina e a rede local aceitam http://.'
+  }
   return null
+}
+
+/** Este computador ou a rede local (Ollama, LM Studio): onde `http://` é aceitável. */
+function isLocalHost(hostname: string): boolean {
+  const h = hostname.toLowerCase()
+  if (h === 'localhost' || h === '[::1]' || h.endsWith('.localhost') || h.endsWith('.local')) return true
+  const ip = /^(\d+)\.(\d+)\.\d+\.\d+$/.exec(h)
+  if (!ip) return false
+  const [a, b] = [Number(ip[1]), Number(ip[2])]
+  return a === 127 || a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31)
 }
 
 /**

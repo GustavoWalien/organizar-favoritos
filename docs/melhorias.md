@@ -35,7 +35,7 @@ Pontos levantados durante os testes manuais. Ficam aqui até serem priorizados e
 |---|---|---|---|
 | 14 | IA | Cancelar antes do primeiro resultado abre uma revisão vazia ("0 de 0"); melhor voltar à configuração. | Revisão final |
 | 15 | IA | A mensagem de erro de uma geração anterior continua na tela depois de aplicar ou descartar. | Revisão final |
-| 16 | IA | A tela de configuração pode abrir o formulário mesmo com provedor guardado, se ele carregar depois da tela (corrida rara). | Revisão final |
+| 16 | IA | ✅ **Feito**. A tela de configuração pode abrir o formulário mesmo com provedor guardado, se ele carregar depois da tela (corrida rara). | Revisão final |
 | 17 | IA | O aviso de aplicação conta os planejados, não os aplicados; e a proposta é descartada mesmo se tudo falhar. | Revisão final |
 | 18 | IA | Barra ou Outros marcadas "não mexer" ainda entram como pai de pasta nova (a aplicação barra depois, com mensagem confusa). | Revisão final |
 | 19 | Desempenho | A proteção "não mexer" é recalculada por item percorrendo a árvore toda (O(N²)); com ~10 mil favoritos a tela da IA pode pesar. | Revisão final |
@@ -58,7 +58,7 @@ Pontos levantados durante os testes manuais. Ficam aqui até serem priorizados e
 
 | # | Área | Ponto | Origem |
 |---|---|---|---|
-| 29 | Segurança | Não há como **remover** a chave de API pela interface: "Trocar" só a substitui, e ela segue em `chrome.storage.local`. Adicionar "Remover chave". | Verificação de segurança |
-| 30 | Segurança | Provedor compatível com OpenAI aceita `http://`: fora de `localhost` (Ollama), a chave viaja sem criptografia. Avisar ou recusar. | Verificação de segurança |
-| 31 | Privacidade | Antes de deixar o repositório público: `tests/core/importPlan.test.ts:74` traz um caminho real do Windows (nome de usuário), e `docs/superpowers/specs/2026-11-04-ia-sugestoes-design.md:9` cita a quantidade de favoritos e o nome de uma pasta real. Ambos também estão no histórico do git. Baixo risco. | Verificação de segurança |
+| 29 | Segurança | ✅ **Feito**. Não há como **remover** a chave de API pela interface: "Trocar" só a substitui, e ela segue em `chrome.storage.local`. Adicionar "Remover chave". | Verificação de segurança |
+| 30 | Segurança | ✅ **Feito**: `http://` só em localhost e rede local. Provedor compatível com OpenAI aceita `http://`: fora de `localhost` (Ollama), a chave viaja sem criptografia. Avisar ou recusar. | Verificação de segurança |
+| 31 | Privacidade | ✅ **Feito**. Dados pessoais retirados dos arquivos e do histórico do git, antes de deixar o repositório público. | Verificação de segurança |
 | 32 | Dependências | `npm audit` aponta 4 alertas de severidade baixa só em dependências de desenvolvimento (via `deepmerge`); nada disso vai para a extensão. Rever ao atualizar o WXT. | Verificação de segurança |
