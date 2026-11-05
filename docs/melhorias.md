@@ -53,3 +53,12 @@ Pontos levantados durante os testes manuais. Ficam aqui até serem priorizados e
 | 26 | IA | A estimativa de custo pedida no roteiro (~US$ 0,10) estava errada: "Sem categoria" nos favoritos reais deu 10 lotes e teto de US$ 1,37 com o Opus. Comparar com o custo real no console e, se preciso, ajustar a fórmula ou sugerir o Sonnet no texto. | Teste do Gustavo |
 | 27 | IA | Com o Opus, "Sem categoria" (10 lotes) custou ~US$ 1,00 e as sugestões ficaram ruins. Hipóteses: a IA só vê título e domínio (sem o caminho da URL), as pastas candidatas vão só pelo nome (sem exemplos do que já há nelas), o esforço de raciocínio é baixo e cada lote cria pastas novas sem visão do conjunto. Levantar com o Gustavo o que ficou ruim e comparar com o Haiku antes de mexer. | Teste do Gustavo |
 | 28 | Backups | ✅ **Feito** (falta conferir no Chrome). "Restaurar tudo" cria a pasta "Restaurado em <data>" com a árvore inteira do backup **ao lado** da atual, sem mexer no que existe. Depois das sugestões da IA isso duplicou tudo (pastas novas da IA + cópia das antigas). Oferecer a opção de **substituir**: apagar a árvore atual (tirando antes um backup automático dela) e recriar a do backup no lugar, com confirmação clara. Manter "lado a lado" como alternativa. | Teste do Gustavo |
+
+## Da verificação de segurança (2026-11-05)
+
+| # | Área | Ponto | Origem |
+|---|---|---|---|
+| 29 | Segurança | Não há como **remover** a chave de API pela interface: "Trocar" só a substitui, e ela segue em `chrome.storage.local`. Adicionar "Remover chave". | Verificação de segurança |
+| 30 | Segurança | Provedor compatível com OpenAI aceita `http://`: fora de `localhost` (Ollama), a chave viaja sem criptografia. Avisar ou recusar. | Verificação de segurança |
+| 31 | Privacidade | Antes de deixar o repositório público: `tests/core/importPlan.test.ts:74` traz um caminho real do Windows (nome de usuário), e `docs/superpowers/specs/2026-11-04-ia-sugestoes-design.md:9` cita a quantidade de favoritos e o nome de uma pasta real. Ambos também estão no histórico do git. Baixo risco. | Verificação de segurança |
+| 32 | Dependências | `npm audit` aponta 4 alertas de severidade baixa só em dependências de desenvolvimento (via `deepmerge`); nada disso vai para a extensão. Rever ao atualizar o WXT. | Verificação de segurança |

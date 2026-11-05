@@ -84,12 +84,20 @@ Antes de enviar, a tela mostra exatamente o que sai do navegador e quanto deve c
 
 ## 📥 Instalar
 
-A extensão ainda não está na Chrome Web Store. A instalação leva um minuto:
+A extensão ainda não está na Chrome Web Store: por enquanto, você gera o build no seu computador e carrega a pasta no Chrome. Precisa do [Node.js](https://nodejs.org) (desenvolvido com a versão 24) e do [Git](https://git-scm.com).
 
-1. Baixe o arquivo **`.zip`** mais recente na página de [**Releases**](https://github.com/GustavoWalien/organizar-favoritos/releases/latest) e descompacte numa pasta que você não vá apagar.
+1. No terminal, baixe o projeto e gere o build:
+
+   ```bash
+   git clone https://github.com/GustavoWalien/organizar-favoritos.git
+   cd organizar-favoritos
+   npm install
+   npm run build
+   ```
+
 2. No Chrome, abra `chrome://extensions`.
 3. Ligue o **Modo do desenvolvedor**, no canto superior direito.
-4. Clique em **Carregar sem compactação** e escolha a pasta que você descompactou.
+4. Clique em **Carregar sem compactação** e escolha a pasta `.output/chrome-mv3`, dentro do projeto. Não apague nem mova essa pasta depois.
 5. Fixe o ícone 🔖 na barra do Chrome e clique nele para abrir o painel.
 
 > Feita e testada no Chrome. Por usar as mesmas APIs, deve funcionar em navegadores baseados nele, como Edge e Brave.
@@ -108,13 +116,13 @@ A IA é opcional. Para usar, você precisa de uma **chave de API** do provedor. 
 - **Anthropic:** crie a chave em [console.anthropic.com](https://console.anthropic.com), em *Settings → API Keys*, e coloque créditos em *Billing*. O modelo padrão é o **Claude Haiku 5.5**, o mais barato: pela estimativa da própria extensão, organizar mil favoritos custa alguns centavos de dólar.
 - **Compatível com OpenAI:** informe o endereço da API, a chave e o modelo.
 
-A chave fica guardada só no seu navegador, e a cobrança vem na sua conta do provedor.
+A chave fica guardada só no armazenamento local deste navegador, sem criptografia: ela não vai nos backups nem na sincronização do Chrome, mas quem tiver acesso ao seu perfil do Chrome consegue lê-la. Use uma chave só para isso e defina um limite de gasto no console do provedor. A cobrança vem na sua conta do provedor.
 
 ## 🔒 Privacidade e permissões
 
-- **Seus favoritos não saem do computador.** Não há servidor, conta nem rastreamento.
+- **A extensão não envia seus favoritos para nenhum servidor.** Não há conta, servidor próprio nem rastreamento. (A sincronização do Chrome, se estiver ligada, continua funcionando como sempre.)
 - A única exceção é a IA, e só quando você clica em **Gerar sugestões**: vão o **título e o domínio** de cada favorito (nunca o endereço completo) e os nomes das pastas, direto para o provedor que você escolheu.
-- O teste de links acessa os sites só quando você pede e com a sua permissão.
+- O teste de links acessa os sites só quando você pede e com a sua permissão, sem enviar seus cookies ou logins.
 
 | Permissão | Para quê |
 |---|---|
@@ -139,16 +147,7 @@ A chave fica guardada só no seu navegador, e a cobrança vem na sua conta do pr
 
 ### Rodando localmente
 
-Requisitos: Node.js (desenvolvido com a versão 24) e Chrome.
-
-```bash
-git clone https://github.com/GustavoWalien/organizar-favoritos.git
-cd organizar-favoritos
-npm install
-npm run build        # gera .output/chrome-mv3
-```
-
-Depois, em `chrome://extensions`: **Modo do desenvolvedor** → **Carregar sem compactação** → `.output/chrome-mv3`. A cada build, clique em recarregar na extensão.
+Siga os passos de [Instalar](#-instalar). Depois de cada build, clique em recarregar na extensão, em `chrome://extensions`.
 
 | Comando | Para quê |
 |---|---|
@@ -215,6 +214,6 @@ O design completo e a pesquisa de soluções existentes estão em [`PLANO.md`](P
 <details>
 <summary><b>English summary</b></summary>
 
-**Organizar Favoritos** is a Chrome extension (Manifest V3, React 19, TypeScript, WXT) that helps you clean up and organize your bookmarks safely. It finds unused, duplicate and broken bookmarks and empty folders, lets you review everything before applying, and moves items to a Trash folder instead of deleting them. An optional AI assistant (Anthropic or any OpenAI-compatible API, with your own key) suggests a folder for each loose bookmark; you review and apply only what you accept. Every change is a computed *plan* that runs only after an automatic backup succeeds, and keeps an undo journal. Your bookmarks never leave your computer, except for titles and domains sent to the AI provider when you explicitly ask for suggestions. The core logic is framework-free and covered by 474 Vitest tests.
+**Organizar Favoritos** is a Chrome extension (Manifest V3, React 19, TypeScript, WXT) that helps you clean up and organize your bookmarks safely. It finds unused, duplicate and broken bookmarks and empty folders, lets you review everything before applying, and moves items to a Trash folder instead of deleting them. An optional AI assistant (Anthropic or any OpenAI-compatible API, with your own key) suggests a folder for each loose bookmark; you review and apply only what you accept. Every change is a computed *plan* that runs only after an automatic backup succeeds, and keeps an undo journal. The extension sends your bookmarks to no server of its own; only titles and domains go to the AI provider, and only when you explicitly ask for suggestions. The core logic is framework-free and covered by 474 Vitest tests.
 
 </details>
