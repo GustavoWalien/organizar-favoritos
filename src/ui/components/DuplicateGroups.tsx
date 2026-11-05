@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { DuplicateGroup } from '../../core/duplicates'
 import { groupKey } from '../duplicateChoice'
 import { domainOf, lastUsedLabel } from '../format'
+import Favicon from './Favicon'
 
 const PAGE = 20
 
@@ -28,7 +29,7 @@ export default function DuplicateGroups({ groups, included, onToggleGroup, onKee
             <div className="dup-head">
               <input type="checkbox" checked={on} onChange={() => onToggleGroup(key)} aria-label={`Incluir o grupo ${g.keep.title || key}`} />
               <div className="dup-title">
-                <strong>{g.keep.title || '(sem título)'}</strong>
+                <strong><Favicon url={g.keep.url} />{g.keep.title || '(sem título)'}</strong>
                 <small>{domainOf(g.keep.url)}</small>
               </div>
               <span className="tag tag-duplicado">{copies.length} cópias</span>

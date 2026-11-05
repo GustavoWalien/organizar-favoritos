@@ -1,4 +1,5 @@
 import type { Candidate, Reason } from '../selection'
+import Favicon from './Favicon'
 
 export const REASON_LABEL: Record<Reason, string> = {
   'sem-uso': 'Sem uso',
@@ -22,7 +23,7 @@ export default function LinkReviewList({ items, selected, onToggle }: Props) {
         <li key={c.id}>
           <label>
             <input type="checkbox" checked={selected.has(c.id)} onChange={() => onToggle(c.id)} />{' '}
-            <strong>{c.title || c.url || '(sem título)'}</strong>
+            {c.url && <Favicon url={c.url} />}<strong>{c.title || c.url || '(sem título)'}</strong>
           </label>{' '}
           {c.url && <a href={c.url} target="_blank" rel="noreferrer">abrir</a>}
           <div>
