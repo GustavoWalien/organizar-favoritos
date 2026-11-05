@@ -60,5 +60,5 @@ Pontos levantados durante os testes manuais. Ficam aqui até serem priorizados e
 |---|---|---|---|
 | 29 | Segurança | ✅ **Feito**. Não há como **remover** a chave de API pela interface: "Trocar" só a substitui, e ela segue em `chrome.storage.local`. Adicionar "Remover chave". | Verificação de segurança |
 | 30 | Segurança | ✅ **Feito**: `http://` só em localhost e rede local. Provedor compatível com OpenAI aceita `http://`: fora de `localhost` (Ollama), a chave viaja sem criptografia. Avisar ou recusar. | Verificação de segurança |
-| 31 | Privacidade | Antes de deixar o repositório público: `tests/core/importPlan.test.ts:74` traz um caminho real do Windows (nome de usuário), e `docs/superpowers/specs/2026-11-04-ia-sugestoes-design.md:9` cita a quantidade de favoritos e o nome de uma pasta real. Ambos também estão no histórico do git. Baixo risco. | Verificação de segurança |
+| 31 | Privacidade | ✅ **Feito**. Dados pessoais retirados dos arquivos e do histórico do git, antes de deixar o repositório público. | Verificação de segurança |
 | 32 | Dependências | `npm audit` aponta 4 alertas de severidade baixa só em dependências de desenvolvimento (via `deepmerge`); nada disso vai para a extensão. Rever ao atualizar o WXT. | Verificação de segurança |
