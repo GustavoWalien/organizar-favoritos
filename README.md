@@ -1,126 +1,220 @@
-# Organizar Favoritos
+<div align="center">
 
-Extensão do Chrome para **limpar e organizar os favoritos** sem medo de perder nada: toda mudança passa por pré-visualização, backup automático, Lixeira e desfazer.
+# 🔖 Organizar Favoritos
 
-Projeto pessoal, feito para resolver um problema real: centenas de favoritos que nunca mais foram abertos e outros tantos esquecidos.
+**Limpe e organize os favoritos do Chrome sem medo de perder nada.**
 
-> **English summary:** a personal Chrome extension (Manifest V3, React + TypeScript + WXT) that finds unused, duplicate and broken bookmarks, lets you review them, and moves them to a Trash folder, always taking a backup first and keeping an undo journal. AI-assisted folder suggestions are planned.
+Encontre favoritos esquecidos, duplicados e quebrados, coloque cada um na pasta certa (com ajuda de IA, se quiser) e volte atrás quando precisar: toda mudança tem pré-visualização, backup automático e Desfazer.
 
-## Status
+![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![WXT](https://img.shields.io/badge/WXT-extens%C3%A3o-67D55E)
+![Testes](https://img.shields.io/badge/testes-474%20passando-2EA44F?logo=vitest&logoColor=white)
+![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)
 
-| Marco | O que entrega | Estado |
-|---|---|---|
-| 0. Base | Esqueleto WXT + React + TS, leitura dos favoritos | Pronto |
-| 1. Backup | Snapshots, exportar JSON/HTML, restaurar | Pronto |
-| 2. Limpeza | Sem uso, duplicados, links quebrados, Lixeira, desfazer | Pronto |
-| 3. Organização | Marca "não mexer", vista Organizar e CSV da estrutura | Pronto (falta verificar na interface) |
-| 4. IA | Sugestão de pastas (Anthropic e compatível com OpenAI), revisão e aplicar | Pronto (falta testar com chave real) |
-| Redesenho | Dashboard, Limpeza guiada, Backups, popup com resumo | Pronto (falta verificar na interface) |
-| 5. Acabamento | Capturas de tela, CI, release | Planejado |
+[Instalar](#-instalar) · [O que ela faz](#-o-que-ela-faz) · [Telas](#-telas) · [Privacidade](#-privacidade-e-permissões) · [Para desenvolvedores](#-para-desenvolvedores)
 
-Os marcos 0 a 3 e o redesenho têm testes automatizados da lógica (406 testes). A interface ainda precisa de uma rodada de verificação manual no Chrome; os checklists estão em [`docs/decisions/0000-stack.md`](docs/decisions/0000-stack.md) e [`docs/decisions/0002-marcas-e-csv.md`](docs/decisions/0002-marcas-e-csv.md).
+![Visão geral do painel: porcentagem de favoritos em pastas, sem uso, duplicados, próximos passos e maiores pastas](docs/capturas/visao-geral.png)
 
-## O que ela faz
+<sub>Todas as capturas usam favoritos fictícios.</sub>
 
-**Painel e popup**
-- **Visão geral (dashboard):** quanto dos favoritos já está em pastas, quantos estão sem uso, duplicados ou quebrados, os **próximos passos** em ordem, as maiores pastas, quando cada favorito foi usado e a atividade recente com Desfazer. Cada número leva à tela que resolve aquilo.
-- **Popup do ícone:** o mesmo resumo em miniatura, com o próximo passo e atalhos que abrem o painel já na tela certa.
-- Cada tela tem endereço próprio (`dashboard.html#/limpeza/duplicados`, por exemplo): recarregar não perde o lugar.
+</div>
 
-**Limpeza**
-- **Sem uso:** favoritos que não são abertos há mais de N dias (padrão 365), usando o `dateLastUsed` do Chrome. Quando o Chrome não guardou o último uso, vale a data em que o favorito foi adicionado e o item é marcado como "sem registro de uso".
-- **Duplicados:** compara URLs normalizadas (sem `#fragmento`, sem `utm_*`/`fbclid`/`gclid`, parâmetros ordenados) e mostra os grupos com a cópia que fica já marcada: a mais antiga, a da pasta mais específica ou a mais usada, à escolha, com troca manual por grupo. Nunca deixa mover todas as cópias de um grupo.
-- **Links quebrados:** testa os endereços com concorrência limitada e três resultados: `ok`, `quebrado` (só 404 ou 410) e `incerto` (timeout, bloqueio, 401/403/429, 5xx). Itens só "incertos" nunca vêm marcados.
-- **Pastas vazias.**
-- A Limpeza abre já analisada, em quatro abas com contagem. O resultado do teste de links fica guardado, e o limiar de "sem uso" escolhido vale para todas as telas.
+---
 
-**Organização**
-- **Não mexer:** marca favoritos e pastas que devem ficar onde estão. Pasta marcada protege tudo o que está dentro dela (a caixa dos itens herdados aparece marcada e travada). A marca vive na extensão, não no Chrome, e vai junto nos backups. Hoje ela só é respeitada pela importação do CSV (que não move um item protegido); você ainda pode mover o item à mão. **A Limpeza (sem uso, duplicados, pastas vazias) ainda não considera a marca:** um item marcado pode aparecer na revisão, e "Selecionar todos" → Lixeira o move junto. A marca foi pensada para as propostas automáticas que vêm depois (regras, IA).
-- **Vista Organizar:** tabela com todos os favoritos, pasta atual e a caixa "Não mexer", com filtros (só soltos, só marcados, por pasta, busca sem acento) e marcação em massa.
-- **Exportar e importar a estrutura em CSV:** o CSV leva pastas, favoritos e marcas, e serve para levar a árvore a outro navegador ou conferir numa planilha. A importação mostra uma **prévia** (criados, movidos, marcas alteradas, linhas ignoradas) e deixa desmarcar o que não quer. Ela só cria e move, nunca remove, faz um backup próprio antes e tem **Desfazer**. A Lixeira da extensão não vai no CSV, e linhas dentro dela são ignoradas na importação. Pastas irmãs com o mesmo nome viram uma só ao importar em outro navegador. Para abrir no Google Planilhas: **Arquivo → Importar → Upload**.
+## Por que existe
 
-**Sugestões da IA**
-- Escolha o que organizar (sem categoria, dentro de uma pasta ou tudo) e o provedor: **Anthropic** (padrão Claude Haiku 5.5, o mais barato; Sonnet e Opus como opção) ou **compatível com OpenAI** (OpenAI, Gemini, Groq, OpenRouter, Ollama).
-- Antes de enviar, a tela mostra o que sai do navegador: só **título e domínio** de cada favorito e os nomes das pastas, nunca o endereço completo, com uma estimativa de custo. Favoritos "não mexer" e a Lixeira ficam de fora.
-- Uma regra local resolve sem IA os favoritos cujo domínio já mora numa pasta.
-- A proposta aparece agrupada por pasta (existente ou nova), com motivo e confiança; os de confiança baixa vêm desmarcados. Dá para aceitar por item ou por pasta, mudar o destino e renomear pasta nova. Aplicar faz backup e tem Desfazer.
-- A chave fica só no navegador. Assinaturas (ChatGPT, Claude.ai) não servem: é preciso uma chave de API do console do provedor.
+Com o tempo, a barra de favoritos vira uma gaveta: centenas de links soltos, cópias do mesmo site em pastas diferentes, páginas que não abrem mais e outras que você nunca mais visitou. O gerenciador do Chrome não ajuda a arrumar isso, e as extensões de limpeza costumam apagar coisas sem perguntar.
 
-**Segurança**
-- **Backup antes de cada mudança.** Se o backup falhar, nada é alterado. Guardam-se os últimos 20 no IndexedDB, e dá para fazer um backup manual a qualquer momento.
-- **Lixeira:** "apagar" move para uma pasta `Lixeira (Organizar Favoritos)`. Esvaziar é uma ação separada e pede confirmação.
-- **Desfazer** do último plano aplicado, com o rótulo e a data do que será revertido.
-- **Restaurar:** "Substituir" volta os favoritos exatamente ao backup (o estado atual vira antes um backup automático, que é o caminho de volta); "Lado a lado" recria a árvore em `Restaurado em <data>`; também dá para devolver um item ao lugar de origem.
-- **Exportar** em JSON ou em HTML (formato Netscape, que qualquer navegador importa). A tela de Backups mostra há quanto tempo foi a última cópia exportada e acha favoritos apagados em todos os backups para restaurar.
-- As pastas raiz do Chrome (Barra, Outros, Mobile) nunca são movidas nem renomeadas.
+O **Organizar Favoritos** faz o contrário: mostra o que pode ser arrumado, deixa você revisar item por item e só então aplica, **sempre com um backup antes**.
 
-> O Chrome sincroniza favoritos entre dispositivos: o que for movido aqui chega aos outros. A Lixeira e os backups são a proteção.
+## ✨ O que ela faz
 
-## Como funciona
+| | |
+|---|---|
+| 📊 **Visão geral** | Quanto dos seus favoritos já está em pastas, quantos estão sem uso, duplicados ou quebrados, e os **próximos passos** em ordem. Cada número leva à tela que resolve aquilo. |
+| 🧹 **Limpeza guiada** | Favoritos **sem uso** há mais de N meses, **duplicados** (mesmo endereço, mesmo com `utm_*` ou `#âncora` diferentes), **links quebrados** e **pastas vazias**. Nada é apagado: vai para uma Lixeira. |
+| 🗂️ **Organizar** | Uma tabela com todos os favoritos e a pasta de cada um, com filtros e a marca **não mexer**. Nas listas das pastas, selecione vários ou arraste para mover. Exporta e importa a estrutura em **CSV** (abre no Google Planilhas). |
+| ✨ **Sugestões com IA** | A IA propõe uma pasta para cada favorito solto. Você revisa, ajusta e aplica só o que quiser. Funciona com a **Anthropic (Claude)** ou qualquer API **compatível com OpenAI** (OpenAI, Gemini, Groq, OpenRouter, Ollama). |
+| 🛟 **Backups e restauração** | Backup automático antes de cada mudança, backup manual quando quiser, exportação em HTML ou JSON e restauração completa, lado a lado ou de um item só. |
+| 🔎 **Busca rápida** | `Ctrl + K` busca favoritos, pastas e ações de qualquer tela. |
+| 🎨 **Detalhes** | Ícone de cada site (do cache do próprio Chrome), tema claro, escuro ou do sistema, e um popup com o resumo no ícone da extensão. |
 
-```
-plano → pré-visualização → backup → aplicar → registro para desfazer
-```
+## 📸 Telas
 
-Toda alteração é um **plano**, uma lista de operações (criar pasta, criar link, mover, remover) calculada sem tocar nos favoritos. O `runPlan` grava o backup, aplica as operações uma a uma (uma falha isolada não derruba as outras) e guarda o inverso do que foi aplicado.
+### Seus favoritos, com o ícone de cada site
 
-A lógica fica em `src/core/`, sem depender do Chrome, e o acesso aos favoritos passa pela interface `BookmarksApi`. Por isso a maior parte do código é testada com um Chrome falso em memória.
+![Lista de favoritos sem categoria com ícone, endereço e último uso](docs/capturas/pasta.png)
 
-```
-src/
-  entrypoints/   páginas da extensão: painel e popup
-  core/          lógica pura e testável (planos, duplicados, links, restauração…)
-  chrome/        adaptadores finos para as APIs do Chrome
-  storage/       IndexedDB: backups e diário de desfazer
-  ui/            componentes React
-tests/           testes (Vitest)
-docs/decisions/  decisões e medições
-PLANO.md         design completo e roadmap
-```
+### Limpeza: duplicados e sem uso
 
-## Permissões
+A extensão já escolhe qual cópia de cada duplicado fica (a mais antiga, a da pasta mais específica ou a mais usada) e você pode trocar.
 
-- `bookmarks`: ler e reorganizar os favoritos.
-- `storage` e `unlimitedStorage`: guardar os backups.
-- Acesso a sites (`<all_urls>`) é **opcional** e só é pedido quando você clica em "Testar links", ou, para o domínio do provedor de IA, em "Testar conexão".
-- Não usa `history`. Só as Sugestões da IA mandam algo para fora, quando você clica em "Gerar sugestões": título e domínio dos favoritos e nomes de pastas, nunca a URL completa.
+![Grupos de duplicados com a cópia que fica marcada](docs/capturas/limpeza-duplicados.png)
 
-## Instalar para usar ou desenvolver
+![Favoritos sem uso há mais de 12 meses](docs/capturas/limpeza-sem-uso.png)
+
+### Organizar
+
+![Tabela com todos os favoritos, pasta atual e filtros](docs/capturas/organizar.png)
+
+### Sugestões da IA
+
+Antes de enviar, a tela mostra exatamente o que sai do navegador e quanto deve custar. Depois, as sugestões aparecem agrupadas por pasta, com o motivo e a confiança de cada uma.
+
+![Configuração da IA: o que organizar, provedor e o que vai ser enviado](docs/capturas/ia-configurar.png)
+
+![Revisão das sugestões agrupadas por pasta, com motivo e confiança](docs/capturas/ia-revisao.png)
+
+### Restaurar um backup
+
+![Janela de restauração com as opções Substituir, Lado a lado e Restaurar um item](docs/capturas/restaurar.png)
+
+### Tema claro e popup
+
+<table>
+  <tr>
+    <td width="72%"><img src="docs/capturas/visao-geral-claro.png" alt="Visão geral no tema claro"></td>
+    <td width="28%"><img src="docs/capturas/popup.png" alt="Popup da extensão com o resumo e o próximo passo"></td>
+  </tr>
+</table>
+
+---
+
+## 📥 Instalar
+
+A extensão ainda não está na Chrome Web Store. A instalação leva um minuto:
+
+1. Baixe o arquivo **`.zip`** mais recente na página de [**Releases**](https://github.com/GustavoWalien/organizar-favoritos/releases/latest) e descompacte numa pasta que você não vá apagar.
+2. No Chrome, abra `chrome://extensions`.
+3. Ligue o **Modo do desenvolvedor**, no canto superior direito.
+4. Clique em **Carregar sem compactação** e escolha a pasta que você descompactou.
+5. Fixe o ícone 🔖 na barra do Chrome e clique nele para abrir o painel.
+
+> Feita e testada no Chrome. Por usar as mesmas APIs, deve funcionar em navegadores baseados nele, como Edge e Brave.
+
+### Primeiros passos
+
+1. **Faça um backup** pelo botão no topo do painel (a extensão também faz um sozinha antes de cada mudança).
+2. Siga os **Próximos passos** da Visão geral: juntar duplicados, testar os links, revisar os sem uso.
+3. Para dar pasta aos favoritos soltos, use **Sugestões da IA** ou arraste-os para uma pasta na barra lateral.
+4. Errou? Clique em **Desfazer** no aviso, ou restaure um backup em **Backups**.
+
+### Usando a IA
+
+A IA é opcional. Para usar, você precisa de uma **chave de API** do provedor. Assinaturas como ChatGPT Plus ou Claude Pro não servem, porque não dão acesso à API.
+
+- **Anthropic:** crie a chave em [console.anthropic.com](https://console.anthropic.com), em *Settings → API Keys*, e coloque créditos em *Billing*. O modelo padrão é o **Claude Haiku 5.5**, o mais barato: pela estimativa da própria extensão, organizar mil favoritos custa alguns centavos de dólar.
+- **Compatível com OpenAI:** informe o endereço da API, a chave e o modelo.
+
+A chave fica guardada só no seu navegador, e a cobrança vem na sua conta do provedor.
+
+## 🔒 Privacidade e permissões
+
+- **Seus favoritos não saem do computador.** Não há servidor, conta nem rastreamento.
+- A única exceção é a IA, e só quando você clica em **Gerar sugestões**: vão o **título e o domínio** de cada favorito (nunca o endereço completo) e os nomes das pastas, direto para o provedor que você escolheu.
+- O teste de links acessa os sites só quando você pede e com a sua permissão.
+
+| Permissão | Para quê |
+|---|---|
+| `bookmarks` | Ler e reorganizar os favoritos |
+| `storage`, `unlimitedStorage` | Guardar backups e preferências no navegador |
+| `favicon` | Mostrar o ícone de cada site a partir do cache do Chrome |
+| Acesso a sites (opcional) | Pedido só ao clicar em **Testar links**, ou no domínio do provedor de IA ao clicar em **Testar conexão** |
+
+> O Chrome sincroniza favoritos entre dispositivos: o que for reorganizado aqui chega aos outros. Os backups são a sua rede de proteção.
+
+---
+
+## 💻 Para desenvolvedores
+
+### Stack
+
+- **[WXT](https://wxt.dev)**, framework de extensões com Vite, gerando um Manifest V3
+- **React 19** e **TypeScript** (modo estrito)
+- **IndexedDB** (`idb`) para backups e o histórico do Desfazer
+- **`@anthropic-ai/sdk`** com saída estruturada (JSON Schema), e `fetch` para as APIs compatíveis com OpenAI
+- **Vitest** e `fake-indexeddb`: **474 testes**, quase todos da lógica, sem precisar do Chrome
+
+### Rodando localmente
 
 Requisitos: Node.js (desenvolvido com a versão 24) e Chrome.
 
 ```bash
+git clone https://github.com/GustavoWalien/organizar-favoritos.git
+cd organizar-favoritos
 npm install
 npm run build        # gera .output/chrome-mv3
 ```
 
-No Chrome: `chrome://extensions` → ativar **Modo do desenvolvedor** → **Carregar sem compactação** → escolher `.output/chrome-mv3`. Depois de cada build, clique em recarregar na extensão.
-
-Se o Chrome roda no Windows e o código no WSL, use o caminho `\\wsl.localhost\<distro>\...\organizar-favoritos\.output\chrome-mv3`. Detalhes em [`docs/decisions/0000-stack.md`](docs/decisions/0000-stack.md).
+Depois, em `chrome://extensions`: **Modo do desenvolvedor** → **Carregar sem compactação** → `.output/chrome-mv3`. A cada build, clique em recarregar na extensão.
 
 | Comando | Para quê |
 |---|---|
-| `npm run dev` | Modo de desenvolvimento do WXT |
+| `npm run dev` | Modo de desenvolvimento do WXT, com recarga automática |
 | `npm run build` | Build de produção |
 | `npm test` | Testes (Vitest) |
 | `npm run compile` | Checagem de tipos (`tsc --noEmit`) |
-| `npm run zip` | Empacota a extensão |
+| `npm run zip` | Gera o `.zip` para distribuir |
 
-## Decisões de design
+> **Chrome no Windows e código no WSL?** Carregue a pasta pelo caminho `\\wsl.localhost\<distro>\...\organizar-favoritos\.output\chrome-mv3`. Detalhes em [`docs/decisions/0000-stack.md`](docs/decisions/0000-stack.md).
 
-- **Reversibilidade acima de tudo:** o projeto prefere pedir uma confirmação a mais a perder um favorito.
-- **"Incerto" em vez de "quebrado":** as extensões de limpeza existentes são criticadas por falsos "inalcançáveis". Aqui só 404/410 contam como quebrado.
+### Como funciona por dentro
+
+Nenhuma tela mexe nos favoritos diretamente. Toda alteração vira um **plano**:
+
+```
+calcular o plano → pré-visualizar → backup → aplicar → guardar o inverso (Desfazer)
+```
+
+- Um **plano** é uma lista de operações (`create-folder`, `create-link`, `move`, `remove`) calculada sem tocar no Chrome.
+- O `runPlan` grava um backup e, **se o backup falhar, não aplica nada**. Depois aplica as operações uma a uma (uma falha isolada não derruba as outras) e registra o inverso de cada uma para o Desfazer.
+- A lógica fica em `src/core/`, sem depender do Chrome. O acesso aos favoritos passa pela interface `BookmarksApi`, e os testes usam uma versão falsa em memória.
+
+```
+src/
+  core/          lógica pura e testada: planos, duplicados, links, limpeza, restauração, CSV
+  ai/            escopo, prompt, validação da resposta e adaptadores (Anthropic, compatível com OpenAI)
+  chrome/        adaptadores finos para as APIs do Chrome
+  storage/       IndexedDB e chrome.storage: backups, histórico do Desfazer, preferências
+  ui/            componentes React, telas e tema
+  entrypoints/   páginas da extensão: painel e popup
+tests/           testes (Vitest)
+docs/            decisões de design, planos e specs
+```
+
+### Decisões de design
+
+- **Reversibilidade acima de tudo:** é melhor pedir uma confirmação a mais do que perder um favorito.
+- **"Incerto" em vez de "quebrado":** só 404 e 410 contam como quebrado. Timeout, bloqueio, 401/403/429 e 5xx viram "incerto" e nunca vêm marcados para a Lixeira.
 - **Sem service worker:** o teste de links roda na página do painel, porque o Chrome pode encerrar o service worker no meio de uma varredura longa.
-- **ID fixo da extensão:** o manifesto tem uma `key` pública, para os backups não se perderem se a pasta do build mudar de lugar.
-- **Importar só cria e move:** um CSV nunca apaga nem renomeia o que o navegador já tem.
-- A pesquisa de soluções existentes e o roadmap completo estão em [`PLANO.md`](PLANO.md).
+- **ID fixo da extensão:** o manifesto tem uma `key` pública, para os backups (atrelados ao ID) não se perderem se a pasta do build mudar.
+- **A IA nunca aplica sozinha:** ela devolve uma proposta validada contra um esquema, e só o que você aceita vira plano.
+- **Importar CSV só cria e move:** nunca apaga nem renomeia o que já existe.
 
-## Roadmap
+O design completo e a pesquisa de soluções existentes estão em [`PLANO.md`](PLANO.md) e em [`docs/`](docs/).
 
-1. **Organização (feito):** marca "não mexer", vista em tabela e CSV da estrutura. Regras locais (domínio, palavras no título) podem vir depois.
-2. **IA (próximo):** a IA propõe a árvore de pastas e você aprova por pasta e por item. Dois adaptadores: Anthropic e compatível com OpenAI (OpenAI, Gemini, Groq, OpenRouter, Ollama). A chave fica só no navegador.
-3. **Acabamento:** capturas de tela, CI e release.
+---
 
-## Licença
+## 🗺️ Roadmap
 
-[MIT](LICENSE)
+- [x] Backups, exportação e restauração
+- [x] Limpeza: sem uso, duplicados, links quebrados e pastas vazias
+- [x] Vista Organizar, marca "não mexer" e CSV da estrutura
+- [x] Sugestões de pastas com IA
+- [x] Painel redesenhado, popup e ícones dos sites
+- [ ] Sugestões da IA que aprendem com exemplos da sua própria organização
+- [ ] Publicação na Chrome Web Store
+- [ ] CI com testes e build a cada push
+
+## 📄 Licença
+
+[MIT](LICENSE). Feito por [Gustavo Silva](https://github.com/GustavoWalien).
+
+<details>
+<summary><b>English summary</b></summary>
+
+**Organizar Favoritos** is a Chrome extension (Manifest V3, React 19, TypeScript, WXT) that helps you clean up and organize your bookmarks safely. It finds unused, duplicate and broken bookmarks and empty folders, lets you review everything before applying, and moves items to a Trash folder instead of deleting them. An optional AI assistant (Anthropic or any OpenAI-compatible API, with your own key) suggests a folder for each loose bookmark; you review and apply only what you accept. Every change is a computed *plan* that runs only after an automatic backup succeeds, and keeps an undo journal. Your bookmarks never leave your computer, except for titles and domains sent to the AI provider when you explicitly ask for suggestions. The core logic is framework-free and covered by 474 Vitest tests.
+
+</details>
