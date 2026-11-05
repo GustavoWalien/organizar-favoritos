@@ -50,7 +50,7 @@ Os marcos 0 a 3 e o redesenho têm testes automatizados da lógica (406 testes).
 - **Backup antes de cada mudança.** Se o backup falhar, nada é alterado. Guardam-se os últimos 20 no IndexedDB, e dá para fazer um backup manual a qualquer momento.
 - **Lixeira:** "apagar" move para uma pasta `Lixeira (Organizar Favoritos)`. Esvaziar é uma ação separada e pede confirmação.
 - **Desfazer** do último plano aplicado, com o rótulo e a data do que será revertido.
-- **Restaurar nunca sobrescreve:** recria a árvore em `Restaurado em <data>`, ou devolve um item ao lugar de origem.
+- **Restaurar nunca apaga nada:** "Substituir" volta os favoritos exatamente ao backup e manda o que existia para a Lixeira (com Desfazer); "Lado a lado" recria a árvore em `Restaurado em <data>`; também dá para devolver um item ao lugar de origem.
 - **Exportar** em JSON ou em HTML (formato Netscape, que qualquer navegador importa). A tela de Backups mostra há quanto tempo foi a última cópia exportada e acha favoritos apagados em todos os backups para restaurar.
 - As pastas raiz do Chrome (Barra, Outros, Mobile) nunca são movidas nem renomeadas.
 

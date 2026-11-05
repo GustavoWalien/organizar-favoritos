@@ -7,12 +7,13 @@ interface Props {
   title: string
   busy: boolean
   onRestoreAll: () => void
+  onRestoreReplace: () => void
   onRestoreItem: (id: string) => void
   onClose: () => void
 }
 
-/** "Restaurar…": restaurar tudo (pasta nova) ou um favorito ou pasta do backup. */
-export default function RestoreDialog({ snapshot, title, busy, onRestoreAll, onRestoreItem, onClose }: Props) {
+/** "Restaurar…": substituir os favoritos pelos do backup, restaurar lado a lado (pasta nova) ou um favorito ou pasta do backup. */
+export default function RestoreDialog({ snapshot, title, busy, onRestoreAll, onRestoreReplace, onRestoreItem, onClose }: Props) {
   const [query, setQuery] = useState('')
   const dialog = useRef<HTMLDivElement>(null)
   const links = useMemo(() => flattenLinks(snapshot.tree), [snapshot])
@@ -40,10 +41,17 @@ export default function RestoreDialog({ snapshot, title, busy, onRestoreAll, onR
         <h2 className="dialog-head">Restaurar o backup de {title}</h2>
         <section className="restore-option">
           <div>
-            <strong>Restaurar tudo</strong>
+            <strong>Substituir pelos favoritos do backup</strong>
+            <p className="muted small">Volta exatamente como estava no backup. O que existe hoje vai para a Lixeira (nada é apagado), e o Desfazer volta tudo.</p>
+          </div>
+          <button className="primary" onClick={onRestoreReplace} disabled={busy}>Substituir…</button>
+        </section>
+        <section className="restore-option">
+          <div>
+            <strong>Restaurar lado a lado</strong>
             <p className="muted small">Cria a pasta "Restaurado em &lt;data&gt;" com a árvore inteira. Nada do que existe hoje é mexido.</p>
           </div>
-          <button className="primary" onClick={onRestoreAll} disabled={busy}>Restaurar tudo</button>
+          <button onClick={onRestoreAll} disabled={busy}>Lado a lado</button>
         </section>
         <section className="restore-option column">
           <strong>Restaurar um item</strong>

@@ -141,7 +141,7 @@ export default function Shell() {
   } else if (view.name === 'ai') {
     content = <AiView tree={tree} marks={lib.marks} ai={ai} onNotify={lib.notify} />
   } else if (view.name === 'backups') {
-    content = <BackupsView tree={tree} lastExportAt={dash.lastExportAt} onChanged={() => { void dash.refresh() }} />
+    content = <BackupsView tree={tree} lastExportAt={dash.lastExportAt} onChanged={() => { void dash.refresh() }} onNotify={lib.notify} />
   } else {
     content = (
       <OverviewView

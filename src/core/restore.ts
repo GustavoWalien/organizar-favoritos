@@ -1,3 +1,4 @@
+import { findTrash, TRASH_TITLE } from './cleanup'
 import type { ItemMark } from './marks'
 import { findNode, isProtected, otherBookmarksId } from './tree'
 import type { BmNode, Operation, Plan, PlanMark, Snapshot } from './types'
@@ -66,6 +67,42 @@ export function planRestoreAll(snapshot: Snapshot, current: BmNode[], now: Date)
   for (const child of top && top.kind === 'folder' ? top.children : snapshot.tree) recreate(child, rootId, r)
   const marks = marksFor(snapshot, r.tempOf)
   const plan: Plan = { id: `restore-all-${now.getTime()}`, label: 'Restaurar backup completo', operations: ops }
+  if (marks.length > 0) plan.marks = marks
+  return plan
+}
+
+/**
+ * Substitui a árvore atual pela do backup: o que existe hoje em cada raiz vai para a Lixeira (nada é apagado)
+ * e o conteúdo de cada raiz do backup é recriado na raiz correspondente. A Lixeira do backup não é recriada.
+ */
+export function planRestoreReplace(snapshot: Snapshot, current: BmNode[], now: Date): Plan {
+  const nextTemp = counter()
+  const ops: Operation[] = []
+  const r = newRecreator(ops, nextTemp, snapshot)
+  const isTrash = (n: BmNode) => n.kind === 'folder' && n.title === TRASH_TITLE
+  const otherId = otherBookmarksId(current)
+
+  let trashId = findTrash(current)?.id
+  if (trashId === undefined) {
+    trashId = nextTemp()
+    ops.push({ op: 'create-folder', tempId: trashId, parentId: otherId, title: TRASH_TITLE })
+  }
+
+  const currentRoots = (current[0]?.kind === 'folder' ? current[0].children : []).filter((n) => n.kind === 'folder')
+  for (const root of currentRoots) {
+    for (const child of root.children) if (child.id !== trashId) ops.push({ op: 'move', id: child.id, toParentId: trashId })
+  }
+
+  const backupRoots = snapshot.tree[0]?.kind === 'folder' ? snapshot.tree[0].children : []
+  backupRoots.forEach((root, i) => {
+    if (root.kind !== 'folder') return
+    const target = currentRoots.find((c) => c.id === root.id) ?? currentRoots[i]
+    const parentId = target?.id ?? otherId
+    for (const child of root.children) if (!isTrash(child)) recreate(child, parentId, r)
+  })
+
+  const marks = marksFor(snapshot, r.tempOf)
+  const plan: Plan = { id: `restore-replace-${now.getTime()}`, label: 'Restaurar backup substituindo os favoritos', operations: ops }
   if (marks.length > 0) plan.marks = marks
   return plan
 }
