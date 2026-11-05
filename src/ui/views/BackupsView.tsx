@@ -3,7 +3,7 @@ import { chromeBookmarksApi } from '../../chrome/bookmarksApi'
 import { userFolderCount } from '../../core/dashboard'
 import { findDeleted } from '../../core/deletedSearch'
 import { runPlan, BackupFailedError } from '../../core/plan'
-import { planRestoreAll, planRestoreItem } from '../../core/restore'
+import { planRestoreAll, planRestoreItem, planRestoreReplace } from '../../core/restore'
 import { snapshotToJson, snapshotToNetscapeHtml } from '../../core/snapshot'
 import { summarize } from '../../core/tree'
 import type { BmNode, Plan, Snapshot } from '../../core/types'
@@ -31,9 +31,11 @@ interface Props {
   lastExportAt: number | null
   /** Depois de backup, exportação ou restauração: o painel relê os números. */
   onChanged: () => void
+  /** Aviso do painel, com o botão Desfazer do plano aplicado. */
+  onNotify: (message: string, undoable?: boolean, planId?: string) => void
 }
 
-export default function BackupsView({ tree, lastExportAt, onChanged }: Props) {
+export default function BackupsView({ tree, lastExportAt, onChanged, onNotify }: Props) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [restoring, setRestoring] = useState<Snapshot | null>(null)
   const [query, setQuery] = useState('')
@@ -76,6 +78,20 @@ export default function BackupsView({ tree, lastExportAt, onChanged }: Props) {
     return r.failed.length ? `Restaurado com ${r.failed.length} falha(s).` : 'Backup restaurado na pasta "Restaurado em ...".'
   })
 
+  const restoreReplace = (s: Snapshot) => run(async () => {
+    const plan = planRestoreReplace(s, await chromeBookmarksApi.getTree(), new Date())
+    const moved = plan.operations.filter((o) => o.op === 'move').length
+    const msg = `Trocar todos os seus favoritos pelos do backup de ${when(s.createdAt)}?\n\n`
+      + `O que existe hoje (${moved} ${moved === 1 ? 'item' : 'itens'} na Barra, em Outros e em Celular) vai para a Lixeira. Nada é apagado.\n`
+      + 'Um backup do estado atual é feito antes, e o Desfazer volta tudo.'
+    if (!window.confirm(msg)) return 'Restauração cancelada.'
+    const r = await runPlan(plan, chromeBookmarksApi, Date.now())
+    setRestoring(null)
+    const done = r.failed.length ? `Restaurado com ${r.failed.length} falha(s).` : 'Favoritos substituídos pelos do backup. O que havia antes está na Lixeira.'
+    onNotify(done, r.entry.inverse.length > 0, plan.id)
+    return done
+  })
+
   const restoreItem = (s: Snapshot, id: string) => run(async () => {
     const plan = planRestoreItem(s, id, await chromeBookmarksApi.getTree(), new Date())
     if (plan.operations.length === 0) return 'Esse item já está no lugar original.'
@@ -98,7 +114,7 @@ export default function BackupsView({ tree, lastExportAt, onChanged }: Props) {
       <div className="page-head">
         <div>
           <h1>Backups</h1>
-          <p className="muted">Um backup é feito sozinho antes de cada mudança. Restaurar nunca apaga nada: cria uma pasta nova.</p>
+          <p className="muted">Um backup é feito sozinho antes de cada mudança. Restaurar nunca apaga nada: você escolhe substituir (o que existe hoje vai para a Lixeira) ou restaurar lado a lado, numa pasta nova.</p>
         </div>
         <button className="primary big" onClick={backupNow} disabled={busy}><Icon name="archive" /> Fazer backup agora</button>
       </div>
@@ -171,6 +187,7 @@ export default function BackupsView({ tree, lastExportAt, onChanged }: Props) {
           title={when(restoring.createdAt)}
           busy={busy}
           onRestoreAll={() => { void restoreAll(restoring) }}
+          onRestoreReplace={() => { void restoreReplace(restoring) }}
           onRestoreItem={(id) => { void restoreItem(restoring, id) }}
           onClose={() => setRestoring(null)}
         />
